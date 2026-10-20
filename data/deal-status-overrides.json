@@ -1,0 +1,17 @@
+{
+ "version": 1,
+ "updatedAt": "2026-10-17",
+ "source": "docs/COUPON_RECONCILIATION_2026-10-17.md（用户实测确认记录）",
+ "note": "停售/下架状态必须来自可追溯记录，不得由脚本按券名硬编码。匹配优先 productViewSign，其次券名（匹配方式写入验收报告）。",
+ "entries": [
+  {
+   "productViewSign": "JIJOO3FZB5F26JZUELOV5QWBT4_VE6Y7HURK7DIZNVIAXBHK2NAKA",
+   "skuViewId": "JIJOO3FZB5F26JZUELOV5QWBT4",
+   "name": "薯乐三人餐",
+   "status": "offline-discontinued",
+   "evidence": "用户 2026-10-17 实测确认该活动结束、团单已下架停售；记录见 docs/COUPON_RECONCILIATION_2026-10-17.md",
+   "recordedAt": "2026-10-17",
+   "confirmedBy": "user"
+  }
+ ]
+}

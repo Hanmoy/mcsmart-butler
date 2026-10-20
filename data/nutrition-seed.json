@@ -1,0 +1,253 @@
+{
+ "version": 1,
+ "updatedAt": "2026-10-17",
+ "source": "审核后的公开营养补录（随包只读种子；用户层同 id 可覆盖）",
+ "note": "本文件只收录**已审核的公开来源**营养补录，用于纯净安装（空 MCSMART_HOME）也能解析到这些食品。绝不把本机用户库整体随包复制。所有条目均为 sourceType=brand 的**估算参考值**（valueKind=estimate）：仅作展示与参照，按 R04 纪律不得参与严格达标/硬上限结论。与官网营养计算器重叠的品项不在此收录（官网库优先）。",
+ "reviewNotes": [
+  "已剔除与官网库重叠的条目（玉米杯等）。",
+  "已剔除名称与证据不一致、待核验的条目：经典麦旋风（证据为「麦旋风™奥利奥原味」，与 R01「口味不同 ≠ 同一食品」红线冲突）、派（泛名，证据为香芋派）。",
+  "已剔除 R01 明令禁止的身份别名：心形薯饼5块的「脆薯饼」（形态与份量不同的独立单品）、麦麦脆汁鸡的「(琵琶腿)/(鸡胸)」规格变体。"
+ ],
+ "entries": [
+  {
+   "id": "seed-maimaicuizhiji-1",
+   "name": "麦麦脆汁鸡",
+   "matchNames": [
+    "麦麦脆汁鸡",
+    "麦麦脆汁鸡1块"
+   ],
+   "spec": "1块",
+   "kcal": 320,
+   "protein": 18,
+   "fat": 20,
+   "carbohydrate": 14,
+   "sodium": 520,
+   "valueKind": "estimate",
+   "servingNote": "每块（1块）",
+   "source": "麦当劳官方炸鸡标准参考值",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "麦当劳官方炸鸡营养参考：单块炸鸡约300~350kcal，均值约320kcal，蛋白质18g，脂肪20g，钠520mg",
+   "verifiedAt": "2026-10-16",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-lanmei-mcflurry",
+   "name": "蓝莓爆爆珠麦旋风",
+   "matchNames": [
+    "蓝莓爆爆珠麦旋风"
+   ],
+   "spec": "1个",
+   "kcal": 280,
+   "protein": 5,
+   "fat": 9,
+   "carbohydrate": 45,
+   "sodium": 120,
+   "valueKind": "estimate",
+   "servingNote": "每个",
+   "source": "麦当劳新品甜品热量公示",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "麦当劳限定蓝莓爆爆珠麦旋风：冰淇淋基底+蓝莓果酱+爆爆珠，每份约280kcal，蛋白质5g，脂肪9g，碳水45g，钠120mg",
+   "verifiedAt": "2026-10-16",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-xinxing-shubing-5",
+   "name": "心形薯饼5块",
+   "matchNames": [
+    "心形薯饼5块",
+    "心形薯饼",
+    "比心薯饼"
+   ],
+   "kcal": 240,
+   "protein": 3,
+   "fat": 14,
+   "carbohydrate": 26,
+   "sodium": 320,
+   "valueKind": "estimate",
+   "servingNote": "5块合计",
+   "source": "麦当劳官方薯饼标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "心形迷你薯饼5块（总净重与热量约等于1.6个常规薯饼）：合计240kcal，蛋白质3g，脂肪14g，碳水26g，钠320mg",
+   "verifiedAt": "2026-10-16",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-huiyan-yuantong",
+   "name": "灰焰圆筒",
+   "matchNames": [
+    "灰焰圆筒"
+   ],
+   "spec": "1个",
+   "kcal": 110,
+   "protein": 2,
+   "fat": 3,
+   "carbohydrate": 18,
+   "sodium": 70,
+   "valueKind": "estimate",
+   "servingNote": "每支",
+   "source": "麦当劳官方甜品标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "灰焰限定黑脆筒甜筒：经典圆筒冰淇淋加竹炭华夫筒，每支约110kcal，蛋白质2g，脂肪3g，碳水18g，钠70mg",
+   "verifiedAt": "2026-10-16",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-mozzarella-sticks",
+   "name": "马苏里拉拉丝芝士条",
+   "matchNames": [
+    "马苏里拉拉丝芝士条",
+    "拉丝芝士条"
+   ],
+   "spec": "1份",
+   "kcal": 220,
+   "protein": 10,
+   "fat": 13,
+   "carbohydrate": 16,
+   "sodium": 420,
+   "valueKind": "estimate",
+   "servingNote": "标准份（3条）",
+   "source": "麦当劳官方小食标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "马苏里拉拉丝芝士条标准份（3条）：每份约220kcal，蛋白质10g，脂肪13g，碳水16g，钠420mg",
+   "verifiedAt": "2026-10-16",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-susu-duosunjuan",
+   "name": "酥酥多笋卷",
+   "matchNames": [
+    "酥酥多笋卷"
+   ],
+   "spec": "1份",
+   "kcal": 510,
+   "protein": 22,
+   "fat": 24,
+   "carbohydrate": 52,
+   "sodium": 980,
+   "valueKind": "estimate",
+   "servingNote": "每份",
+   "source": "麦当劳早餐/全天卷类营养参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "麦当劳多笋卷系列参考值：香脆鸡肉配笋丁与特制酱汁，每份约510kcal，蛋白质22g，脂肪24g，碳水52g，钠980mg",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-jishidan-maimanfen",
+   "name": "吉士蛋麦满分",
+   "matchNames": [
+    "吉士蛋麦满分",
+    "吉士蛋堡"
+   ],
+   "spec": "1个",
+   "kcal": 280,
+   "protein": 15,
+   "fat": 12,
+   "carbohydrate": 28,
+   "sodium": 620,
+   "valueKind": "estimate",
+   "servingNote": "每个",
+   "source": "麦当劳早餐厅标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "麦满分经典系列：英式松饼夹煎蛋与芝士，每份约280kcal，蛋白质15g，脂肪12g，碳水28g，钠620mg",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-suchui-daiguliji",
+   "name": "酥脆带骨里脊",
+   "matchNames": [
+    "酥脆带骨里脊",
+    "带骨里脊",
+    "带骨里脊1块"
+   ],
+   "spec": "1块",
+   "kcal": 220,
+   "protein": 14,
+   "fat": 12,
+   "carbohydrate": 14,
+   "sodium": 480,
+   "valueKind": "estimate",
+   "servingNote": "每份（1块）",
+   "source": "麦当劳官方炸鸡小食标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "带骨猪里脊炸制小食：单块约220kcal，蛋白质14g，脂肪12g，碳水14g，钠480mg",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-xiancui-coffee",
+   "name": "鲜萃咖啡",
+   "matchNames": [
+    "鲜萃咖啡",
+    "鲜萃冰咖",
+    "小鲜萃",
+    "鲜萃"
+   ],
+   "spec": "小杯",
+   "kcal": 10,
+   "protein": 0.5,
+   "fat": 0,
+   "carbohydrate": 2,
+   "sodium": 15,
+   "valueKind": "estimate",
+   "servingNote": "小杯（约250ml）",
+   "source": "麦当劳早餐现煮咖啡标准参考",
+   "sourceType": "brand",
+   "sourceUrl": "https://www.mcdonalds.com.cn",
+   "evidence": "现煮黑咖啡无糖无奶：热量极低，每杯约10kcal，微量碳水与蛋白质",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-search"
+  },
+  {
+   "id": "seed-jingdian-mcflurry",
+   "name": "经典麦旋风",
+   "matchNames": [
+    "经典麦旋风"
+   ],
+   "spec": "1个",
+   "kcal": 265,
+   "protein": 5,
+   "fat": 9,
+   "carbohydrate": 40,
+   "sodium": 121,
+   "valueKind": "estimate",
+   "servingNote": "每杯（1个）",
+   "source": "麦当劳官网营养计算器（麦旋风™奥利奥原味）",
+   "sourceType": "official",
+   "sourceUrl": "https://www.mcdonalds.com.cn/product/Oreo-Mcflurry/",
+   "evidence": "官网产品页「麦旋风™奥利奥原味」营养表：能量 1108 千焦、蛋白质 5 克、脂肪 9 克、碳水化合物 40 克、钠 121 毫克（更新 2025-04）；菜单「经典麦旋风」官网未单列条目，按经典款（奥利奥原味）取参考值，限定口味可能略有差异",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-vision"
+  },
+  {
+   "id": "seed-pai",
+   "name": "派",
+   "matchNames": [
+    "派"
+   ],
+   "spec": "1个",
+   "kcal": 232,
+   "protein": 2,
+   "fat": 12,
+   "carbohydrate": 28,
+   "sodium": 159,
+   "valueKind": "estimate",
+   "servingNote": "每个（以香芋派为参考）",
+   "source": "麦当劳官网营养计算器（香芋派）",
+   "sourceType": "official",
+   "sourceUrl": "https://www.mcdonalds.com.cn/product/Taro-Pie",
+   "evidence": "官网产品页「香芋派」营养表：能量 971 千焦、蛋白质 2 克、脂肪 12 克、碳水化合物 28 克、钠 159 毫克（更新 2025-04）；菜单「派」为口味任选单品，此处以香芋派为参考值，其他口味可能略有差异",
+   "verifiedAt": "2026-10-17",
+   "verifiedBy": "agent-vision"
+  }
+ ]
+}

@@ -1,0 +1,3201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>麦麦智能管家 · 拼单仲裁 × 双预算精算 × McDNA 战报</title>
+<meta name="theme-color" content="#FFC72C">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23D32A1E'/%3E%3Cpath d='M8.5 24V9.5l7.5 7.6 7.5-7.6V24' fill='none' stroke='%23FFC72C' stroke-width='3.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* =====================================================================
+   麦麦智能管家 · 面板视觉层 v2（2026-10-20 统一重写）
+   目标：一套字体梯度、一套圆角梯度、一套间距梯度；红黄只做品牌与强调，
+   不做满屏糖果。所有业务钩子（class / id / data-mode）保持不变，只换外观。
+   ===================================================================== */
+
+/* ---------- 1. 令牌 ---------- */
+:root {
+  --paper:#FBF6EA;          /* 页面底色（暖纸） */
+  --surface:#FFFFFF;        /* 卡片 */
+  --surface-2:#FDFAF1;      /* 次级面（输入框、内嵌块） */
+  --surface-3:#F7F1E2;      /* 数据条、标签底 */
+
+  --ink:#241E15;
+  --ink-2:#5C5342;          /* 正文辅助，白底 6.2:1 */
+  --ink-3:#7A7160;          /* 最小字号辅助，白底 4.7:1 */
+
+  --line:#E8DFCC;
+  --line-2:#D8CBAF;
+
+  --red:#D32A1E;
+  --red-deep:#A81E14;
+  --red-tint:#FDEDEA;
+
+  --yellow:#FFC72C;
+  --yellow-soft:#FFF3D2;
+  --gold:#F2A900;
+
+  --green:#1F7A4D;
+  --green-soft:#E9F5EE;
+  --green-line:#C6E3D3;
+
+  --warn-bg:#FDEDE9;
+  --warn-ink:#8A2418;
+  --warn-line:#F3CEC6;
+
+  --radius:14px;            /* 大面：卡片 */
+  --radius-s:10px;          /* 控件 */
+  --radius-xs:6px;          /* 标签 */
+  --maxw:1160px;
+
+  --shadow-1:0 1px 2px rgba(80,55,0,.06);
+  --shadow-2:0 18px 40px -24px rgba(80,50,0,.45);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+
+* { box-sizing:border-box; margin:0; }
+html, body { background:var(--paper); }
+body {
+  color:var(--ink);
+  font-family:"PingFang SC","Segoe UI","Microsoft YaHei",system-ui,-apple-system,"Noto Sans SC",sans-serif;
+  font-size:14px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+a { color:var(--red); text-decoration:none; }
+a:hover { text-decoration:underline; }
+b, strong { font-weight:700; }
+svg { display:inline-block; }
+/* 表单控件默认不继承字体，中英混排时会与正文脱节 */
+button, input, select, textarea { font-family:inherit; }
+button { cursor:pointer; }
+:focus-visible { outline:2px solid var(--red); outline-offset:2px; border-radius:4px; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---------- 2. 品牌带 ---------- */
+.hero {
+  position:relative;
+  background:linear-gradient(180deg,#FFD34E 0%,#FFC72C 55%,#F4B815 100%);
+  border-bottom:3px solid var(--red);
+  box-shadow:inset 0 -14px 26px -18px rgba(120,60,0,.45);
+  overflow:hidden;
+}
+/* 包装纸质感：极淡的斜向细纹，只给黄底一点表面颗粒，不参与信息层级 */
+.hero::before {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background-image:repeating-linear-gradient(135deg,
+    rgba(122,64,0,.052) 0 1px, rgba(122,64,0,0) 1px 9px);
+}
+.hero .topbar {
+  position:relative; z-index:1;
+  max-width:var(--maxw); margin:0 auto;
+  padding:16px 20px 15px;
+  display:flex; align-items:center; gap:15px;
+}
+/* 金拱门水印：只填品牌带中段的空黄，压到接近纹理的浓度 */
+.hero .topbar::after {
+  content:none;
+}
+.brandmark {
+  width:80px; height:80px; flex:none;
+  border-radius:50%; padding:0; overflow:hidden;
+  background:#fff; border:0;
+  box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(140,80,0,.18), 0 10px 20px -12px rgba(90,50,0,.60);
+}
+.brandmark img { display:block; width:100%; height:100%; object-fit:cover; }
+.brandmark svg { width:58px; height:58px; }
+
+.topbar h1 {
+  font-size:22px; font-weight:800; line-height:1.2;
+  letter-spacing:-.2px; color:var(--ink);
+}
+.topbar .tagline {
+  margin-top:4px; font-size:13px; line-height:1.5;
+  color:#5B4708; letter-spacing:.1px;
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+}
+/* 数据来源做成小徽标：tagline 右端不再是一条断掉的灰线，也给品牌带补一点分量 */
+.tag-chip {
+  font-size:11px; line-height:1.7; letter-spacing:.2px;
+  color:#5B4708; background:rgba(255,255,255,.66);
+  border-radius:999px; padding:1px 9px; white-space:nowrap;
+}
+.topbar .spacer { flex:1; }
+.topbar-pills {
+  display:flex; align-items:center; gap:6px; flex:none;
+  background:rgba(255,255,255,.42); padding:6px; border-radius:999px;
+}
+.pill {
+  font-size:12px; line-height:1.5;
+  color:#4A3A10; background:rgba(255,255,255,.78);
+  border:0; border-radius:999px; padding:4px 12px;
+  white-space:nowrap; flex:none;
+}
+.pill.long { overflow:hidden; text-overflow:ellipsis; max-width:220px; }
+.pillbtn { cursor:pointer; transition:background .15s; }
+.hero .pillbtn:hover { background:#fff; }
+.statusdot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle; background:var(--ink-3); }
+.statusdot.ok { background:var(--green); }
+.statusdot.err { background:var(--red); }
+
+/* ---------- 3. 导航条 ---------- */
+.navbar { background:var(--surface); border-bottom:1px solid var(--line); }
+.navbar-inner {
+  max-width:var(--maxw); margin:0 auto; padding:0 20px;
+  display:flex; align-items:stretch; gap:16px;
+}
+.tabs { display:flex; gap:2px; flex:1; min-width:0; }
+.tab {
+  position:relative;
+  display:flex; align-items:center; gap:9px;
+  padding:13px 16px 12px;
+  border:0; border-radius:0; background:none;
+  color:var(--ink-2); font-size:14px; font-weight:600; line-height:1.3;
+  cursor:pointer; user-select:none; white-space:nowrap; text-align:left;
+  transition:color .15s, background .15s;
+}
+.tab:hover { color:var(--ink); background:var(--surface-2); }
+.tab .t-ico { width:18px; height:18px; flex:none; color:var(--ink-3); transition:color .15s; }
+.tab small { display:block; font-size:11px; font-weight:400; color:var(--ink-3); margin-top:1px; }
+.tab > span:last-child { display:block; }
+.tab.active { color:var(--red); }
+.tab.active .t-ico { color:var(--red); }
+.tab.active small { color:var(--red); }
+.tab.active::after {
+  content:""; position:absolute; left:14px; right:14px; bottom:-1px; height:3px;
+  background:var(--red); border-radius:3px 3px 0 0;
+}
+.secondary-nav { display:flex; align-items:center; flex:none; }
+.secondary-nav .btn-ghost {
+  display:inline-flex; align-items:center; gap:6px;
+  border:1px solid transparent; background:none; padding:6px 10px;
+  font-size:12px; color:var(--ink-2); white-space:nowrap;
+}
+.secondary-nav .btn-ghost:hover { background:var(--surface-3); border-color:var(--line); color:var(--ink); }
+.secondary-nav .btn-ghost.active { border-color:var(--red); color:var(--red); background:var(--red-tint); font-weight:600; }
+
+/* ---------- 4. 外壳与栅格 ---------- */
+.stage { background:transparent; }
+.layout {
+  max-width:var(--maxw); margin:0 auto;
+  padding:22px 20px 40px;
+  display:flex; flex-direction:column; gap:16px;
+}
+.layout.two-col { flex-direction:row; align-items:flex-start; gap:22px; }
+.layout.two-col > :first-child { flex:0 0 400px; min-width:0; }
+.layout.two-col > :last-child { flex:1 1 auto; min-width:0; }
+#mode-solve > :first-child { position:sticky; top:16px; }
+#mode-recipes.layout.two-col > :first-child { flex:0 0 440px; }
+
+/* 表单「一张纸」：左栏合并成一个白色面，节与节之间用纸线分隔，
+   不再一节一张卡（旧实现 5 张卡 + 1 个折叠 + 按钮，视觉被切成碎片）。 */
+#mode-solve > :first-child,
+#mode-group > :first-child,
+#mode-mcdna > :first-child {
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:4px 20px 20px;
+  box-shadow:var(--shadow-1);
+}
+#mode-solve > :first-child > .panel,
+#mode-group > :first-child > .panel,
+#mode-mcdna > :first-child > .panel,
+#mode-recipes > :first-child > .panel,
+#mode-recipes > :last-child > .panel {
+  border:0; border-radius:0; background:transparent; box-shadow:none;
+  padding:16px 0; margin:0; border-bottom:1px solid var(--line);
+}
+#mode-solve > :first-child > .panel:first-child,
+#mode-group > :first-child > .panel:first-child,
+#mode-mcdna > :first-child > .panel:first-child { padding-top:18px; }
+#mode-solve > :first-child > .panel:last-of-type,
+#mode-group > :first-child > .panel:last-of-type,
+#mode-mcdna > :first-child > .panel:last-of-type { border-bottom:0; }
+#mode-solve > :first-child > details.adv,
+#mode-solve > :first-child > .btn-primary,
+#mode-group > :first-child > .btn-primary,
+#mode-mcdna > :first-child > .btn-primary { margin-top:16px; }
+
+/* 右栏独立卡片（数据管理页仍是多卡） */
+#mode-recipes > :first-child > .panel,
+#mode-recipes > :last-child > .panel { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:14px; }
+
+.panel {
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  box-shadow:var(--shadow-1);
+  margin-bottom:14px;
+}
+.panel:last-child { margin-bottom:0; }
+.panel h2 {
+  display:flex; align-items:center; gap:8px;
+  font-size:13px; font-weight:700; letter-spacing:.3px;
+  color:var(--ink); margin-bottom:14px;
+  text-transform:none;
+}
+.panel h2 .no {
+  font-size:11px; font-weight:800; letter-spacing:0;
+  color:var(--red); background:none; border:0;
+  width:auto; height:auto; padding:0; min-width:12px;
+  display:inline-block; font-variant-numeric:tabular-nums;
+}
+
+/* ---------- 5. 文本与提示 ---------- */
+.hint, .note {
+  font-size:11.5px; line-height:1.7; color:var(--ink-3);
+  max-width:74ch;
+}
+.hint b, .note b { color:var(--ink-2); }
+.notice {
+  background:var(--yellow-soft); border:1px solid #EEDC9C;
+  color:#5C4508; border-radius:var(--radius-s);
+  padding:10px 13px; font-size:12px; line-height:1.7;
+}
+.notice summary { cursor:pointer; font-weight:600; }
+.notice details div { color:#6B5208; margin-top:2px; }
+.warn {
+  background:var(--warn-bg); border:1px solid var(--warn-line);
+  color:var(--warn-ink); border-radius:var(--radius-s);
+  padding:12px 14px; font-size:12.5px; line-height:1.7;
+}
+.empty {
+  border:1px dashed var(--line-2); border-radius:var(--radius);
+  background:rgba(255,255,255,.55);
+  padding:40px 26px; text-align:center;
+}
+.empty-title { font-size:14px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+.empty-body { font-size:12.5px; line-height:1.7; color:var(--ink-2); max-width:46ch; margin:0 auto; }
+.empty-body + .empty-body { margin-top:2px; }
+.state-card {
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:26px 24px; margin-bottom:14px; text-align:center;
+}
+.state-card .sc-icon { display:block; margin:0 auto 8px; }
+.state-card .sc-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+.state-card .sc-body { font-size:13px; color:var(--ink-2); line-height:1.7; margin-bottom:12px; }
+.state-card .sc-retry {
+  display:inline-block; padding:9px 22px; background:var(--red); color:#fff;
+  border:0; border-radius:var(--radius-s); font-size:13px; font-weight:600; cursor:pointer;
+}
+.state-card .sc-retry:hover { background:var(--red-deep); }
+.state-card.err { border-color:var(--warn-line); background:var(--warn-bg); }
+.state-card.err .sc-title { color:var(--warn-ink); }
+
+/* ---------- 6. 表单 ---------- */
+label.lb {
+  display:block; font-size:11.5px; font-weight:500;
+  color:var(--ink-2); margin-bottom:6px; letter-spacing:.2px;
+}
+.inwrap { position:relative; }
+input:not([type=checkbox]):not([type=radio]), select, textarea {
+  width:100%; padding:9px 12px;
+  border:1px solid var(--line-2); border-radius:var(--radius-s);
+  font-size:14px; color:var(--ink); background:var(--surface);
+  outline:none; font-family:inherit; line-height:1.5;
+  transition:border-color .15s, box-shadow .15s, background .15s;
+}
+input:not([type=checkbox]):not([type=radio])::placeholder, textarea::placeholder { color:#A09684; }
+input:not([type=checkbox]):not([type=radio]):hover, select:hover, textarea:hover { border-color:#C9B995; }
+input:not([type=checkbox]):not([type=radio]):focus, select:focus, textarea:focus {
+  border-color:var(--red); background:#fff;
+  box-shadow:0 0 0 3px rgba(211,42,30,.12);
+}
+input:disabled, select:disabled, textarea:disabled { background:var(--surface-3); color:var(--ink-3); cursor:not-allowed; }
+input[type=password] { font-family:ui-monospace,Consolas,monospace; letter-spacing:.4px; }
+input[type=url] { word-break:break-all; }
+input[type=date] { min-height:38px; -webkit-appearance:none; appearance:none; }
+input[type=date]::-webkit-calendar-picker-indicator { cursor:pointer; opacity:.5; padding:2px; border-radius:4px; }
+input[type=date]::-webkit-calendar-picker-indicator:hover { opacity:.85; background:var(--surface-3); }
+input[type=date]::-webkit-datetime-edit { color:var(--ink); }
+input[type=date]:invalid::-webkit-datetime-edit { color:var(--ink-3); }
+.inwrap .unit {
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  font-size:11px; color:var(--ink-3); pointer-events:none;
+}
+input.has-unit { padding-right:48px; }
+textarea { resize:vertical; min-height:74px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* 分段选择 */
+.seg { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.seg input { display:none; }
+.seg label {
+  display:block; border:1px solid var(--line-2); border-radius:var(--radius-s);
+  padding:9px 6px; text-align:center; font-size:13px; line-height:1.35;
+  color:var(--ink-2); background:var(--surface); cursor:pointer;
+  transition:border-color .15s, background .15s, color .15s, box-shadow .15s;
+}
+.seg label small { display:block; font-size:10.5px; color:var(--ink-3); margin-top:1px; }
+.seg label:hover { border-color:#C9B995; background:var(--surface-2); }
+.seg input:checked + label {
+  border-color:var(--red); color:var(--red); background:var(--red-tint);
+  font-weight:600; box-shadow:inset 0 0 0 1px var(--red);
+}
+.seg input:checked + label small { color:var(--red); }
+.seg input:focus-visible + label { outline:2px solid var(--red); outline-offset:2px; }
+
+/* 预设档位 */
+.preset-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.preset-chips button {
+  padding:4px 11px; font-size:11.5px; border:1px solid var(--line-2);
+  border-radius:999px; background:var(--surface); color:var(--ink-2); cursor:pointer;
+  transition:all .12s;
+}
+.preset-chips button:hover { border-color:var(--gold); background:var(--yellow-soft); color:var(--ink); }
+.preset-chips button.on { border-color:var(--red); background:var(--red-tint); color:var(--red); font-weight:600; }
+.btn-kcal {
+  background:var(--surface); border:1px solid var(--line-2); border-radius:var(--radius-s);
+  padding:10px 12px; font-size:14px; font-weight:700; color:var(--ink); cursor:pointer;
+  text-align:center; transition:border-color .15s, background .15s, transform .1s;
+}
+.btn-kcal small { display:block; font-size:11px; font-weight:400; color:var(--ink-3); margin-top:1px; }
+.btn-kcal:hover { border-color:var(--gold); background:var(--yellow-soft); }
+.btn-kcal:active { transform:translateY(1px); }
+
+/* 折叠 */
+details.adv {
+  border:1px solid var(--line); border-radius:var(--radius-s);
+  background:var(--surface-2);
+}
+details.adv > summary {
+  cursor:pointer; padding:10px 12px; font-size:12.5px; color:var(--ink-2);
+  list-style:none; display:flex; justify-content:space-between; align-items:center;
+}
+details.adv > summary::-webkit-details-marker { display:none; }
+details.adv > summary::after { content:"展开"; font-size:11px; color:var(--ink-3); }
+details.adv[open] > summary::after { content:"收起"; }
+details.adv .inner { padding:2px 12px 12px; display:flex; flex-direction:column; gap:8px; }
+.crow { display:grid; grid-template-columns:1fr 56px 1.1fr; gap:8px; align-items:center; }
+.crow .cname { font-size:12.5px; color:var(--ink); }
+.crow .cname small { display:block; color:var(--ink-3); font-size:10.5px; }
+.crow select, .crow input { padding:7px 9px; font-size:12.5px; }
+
+/* 拼单成员卡 */
+#memberList { counter-reset:member; }
+.mrow {
+  counter-increment:member; position:relative;
+  border:1px solid var(--line); border-radius:var(--radius-s);
+  background:var(--surface-2); padding:12px 14px 14px; margin-bottom:10px;
+}
+.mrow-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.mrow-head .m-title { font-size:11.5px; font-weight:700; color:var(--ink-2); letter-spacing:.4px; }
+.mrow-head .m-title::before { content:"成员 " counter(member); }
+.m-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px 10px; }
+.m-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.m-field .m-lab { font-size:10.5px; color:var(--ink-3); line-height:1.3; }
+.m-f-wishes, .m-f-taboos, .m-f-notes, .m-f-sugar, .m-f-alias, .m-f-coupon { grid-column:1 / -1; }
+.m-f-sugar { flex-direction:row; align-items:center; gap:12px; }
+.m-f-sugar .m-lab { flex:none; }
+.m-check { display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink); }
+.m-check input { width:auto; }
+.mrow input { padding:7px 9px; font-size:12.5px; }
+.mrow .del {
+  border:1px solid var(--line-2); border-radius:var(--radius-xs);
+  background:var(--surface); color:var(--ink-2); cursor:pointer;
+  height:28px; padding:0 10px; font-size:12.5px;
+}
+.mrow .del:hover { color:var(--red); border-color:var(--red); background:var(--red-tint); }
+.confirm-strip {
+  display:none; background:var(--yellow-soft); border:1px solid #EBD388;
+  color:#5C4508; border-radius:var(--radius-s); padding:9px 12px;
+  font-size:12px; margin-bottom:10px;
+}
+
+/* ---------- 7. 按钮 ---------- */
+.btn-ghost {
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  padding:9px 14px; border:1px solid var(--line-2); border-radius:var(--radius-s);
+  background:var(--surface); color:var(--ink); font-size:13px; font-weight:500;
+  cursor:pointer; white-space:nowrap;
+  transition:border-color .15s, background .15s, color .15s;
+}
+.btn-ghost:hover { border-color:var(--gold); background:var(--yellow-soft); }
+.btn-ghost:disabled { opacity:.5; cursor:wait; }
+.btn-primary {
+  display:block; width:100%; padding:14px 20px;
+  border:0; border-radius:12px;
+  background:var(--red); color:#fff;
+  font-size:15px; font-weight:700; letter-spacing:.12em;
+  cursor:pointer; box-shadow:none;
+  transition:background .15s, transform .08s;
+}
+.btn-primary:hover { background:var(--red-deep); }
+.btn-primary:active { transform:translateY(1px); }
+.btn-primary:disabled { opacity:.55; cursor:wait; letter-spacing:.02em; transform:none; }
+.copybtn {
+  width:100%; margin-top:10px; padding:9px;
+  border:1px dashed var(--line-2); border-radius:var(--radius-s);
+  background:var(--surface-2); color:var(--ink-2); font-size:12.5px; cursor:pointer;
+  transition:all .12s;
+}
+.copybtn:hover { border-color:var(--red); color:var(--red); background:var(--red-tint); }
+.vbtn {
+  width:100%; margin-top:8px; padding:9px;
+  border:1px solid var(--line-2); border-radius:var(--radius-s);
+  background:var(--surface); color:var(--ink); font-size:12.5px; cursor:pointer;
+  transition:all .15s;
+}
+.vbtn:hover { border-color:var(--gold); background:var(--yellow-soft); }
+
+/* ---------- 8. 门店条 ---------- */
+.storebar .sbar-top { display:grid; grid-template-columns:1fr 1.4fr 1.3fr auto; gap:10px; align-items:end; }
+.storebar .sbar-list { display:flex; gap:8px; overflow-x:auto; padding:10px 2px 4px; }
+.sbar-item {
+  flex:none; width:240px; min-width:0; display:flex; flex-direction:column;
+  border:1px solid var(--line); border-radius:var(--radius-s);
+  padding:9px 12px; cursor:pointer; background:var(--surface-2);
+  transition:border-color .12s, background .12s;
+}
+.sbar-item:hover { border-color:var(--line-2); background:#fff; }
+.sbar-item.sel { border-color:var(--red); background:var(--red-tint); box-shadow:inset 0 0 0 1px var(--red); }
+.sbar-item .sname {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  min-width:0; max-width:100%; overflow:hidden;
+  font-size:12.5px; font-weight:600; white-space:normal; word-break:break-word; line-height:1.4;
+}
+.sbar-item .saddr {
+  display:block; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; font-size:10.5px; color:var(--ink-2); margin-top:2px;
+}
+.sbar-item .smeta {
+  display:flex; justify-content:space-between; gap:8px; min-width:0;
+  font-size:10px; color:var(--ink-3); margin-top:3px;
+}
+.sbar-item .smeta > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.storebar .sel-line { display:none; font-size:12.5px; color:var(--ink-2); margin-top:6px; }
+.storebar .sel-line b { color:var(--ink); font-weight:600; }
+.storebar .sel-line button { flex:none; padding:5px 10px; font-size:11.5px; }
+.storebar .sbar-hint-toggle {
+  display:none; border:0; background:none; color:var(--ink-2);
+  font-size:11px; cursor:pointer; text-decoration:underline; padding:0;
+}
+/* 收起态：一条 48px 的工具条，不再留一张 100px 的空卡 */
+.storebar.collapsed { display:flex; align-items:center; gap:12px; padding:9px 16px; }
+.storebar.collapsed h2 { display:none; }
+.storebar.collapsed .sbar-top,
+.storebar.collapsed .sbar-list,
+.storebar.collapsed .hint,
+.storebar.collapsed .sbar-hint-toggle { display:none; }
+.storebar.collapsed .sel-line {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px; flex:1; min-width:0; margin:0; font-size:12.5px;
+}
+.storebar.collapsed .sel-line > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---------- 9. 状态与结果 ---------- */
+.statusline { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; line-height:1.6; }
+.chip {
+  font-size:11.5px; color:var(--ink-2); background:var(--surface-3);
+  border:0; border-radius:var(--radius-xs); padding:3px 8px; white-space:nowrap;
+}
+.chip b { color:var(--ink); font-weight:600; }
+/* 结果区顶部口径行：去边框、用间隔点，读起来是「一句上下文」而不是一排标签 */
+#status, #groupStatus {
+  font-size:11.5px; color:var(--ink-2); gap:0 10px;
+  padding-bottom:12px; margin-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+#status .chip, #groupStatus .chip {
+  background:none; border:0; padding:0; border-radius:0; font-size:11.5px;
+}
+#status .chip:not(:first-child)::before,
+#groupStatus .chip:not(:first-child)::before { content:"·"; margin-right:10px; color:var(--line-2); }
+
+.sol {
+  position:relative; overflow:hidden;
+  background:var(--surface); border:1px solid var(--line); border-radius:16px;
+  padding:16px 18px 14px; margin-bottom:12px;
+  box-shadow:var(--shadow-1);
+  animation:fadeUp .26s var(--ease) both;
+}
+.sol:hover { border-color:var(--line-2); }
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.sol.top1 { border-color:#E4B7AC; box-shadow:0 0 0 1px rgba(211,42,30,.10), var(--shadow-1); }
+.sol .rank {
+  position:static; display:inline-block;
+  background:var(--surface-3); color:var(--ink-2);
+  font-size:10.5px; font-weight:700; letter-spacing:.4px;
+  padding:2px 9px; border-radius:999px; margin-bottom:8px;
+}
+.sol.top1 .rank { background:var(--red); color:#fff; }
+.sol-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin:0 0 8px; }
+.sol-title { font-size:15px; font-weight:700; line-height:1.45; min-width:0; }
+.sol-title .count { color:var(--ink-3); font-size:11.5px; font-weight:400; margin-left:6px; }
+.price {
+  flex:none; text-align:right; line-height:1.05;
+  font-size:28px; font-weight:800; color:var(--red);
+  font-variant-numeric:tabular-nums; letter-spacing:-.5px;
+}
+.price small {
+  display:block; margin-top:3px;
+  font-size:10.5px; font-weight:400; color:var(--ink-3);
+  letter-spacing:0; white-space:nowrap;
+}
+/* 结果卡内的渠道/来源标签 */
+.sol .statusline { margin:0 0 10px; gap:6px; }
+.sol .statusline .chip {
+  background:var(--surface-3); border:0; padding:2px 8px;
+  font-size:10.5px; color:var(--ink-2); border-radius:var(--radius-xs);
+}
+.sol .statusline .chip:not(:first-child)::before { content:none; }
+.sol .warn { margin-top:10px; padding:9px 11px; font-size:12px; }
+
+/* 先读数再给条：满格细条单独出现时容易被读成一条分隔线 */
+.kcalbar { display:flex; flex-direction:column-reverse; gap:5px; margin:10px 0 2px; }
+.kcalbar .bar { height:7px; border-radius:4px; background:#EFE7D6; overflow:hidden; }
+.kcalbar .fill { height:100%; border-radius:4px; background:var(--green); transition:width .4s var(--ease); }
+/* 热量是「贴合目标」而不是「上限」：接近目标用品牌金，红色只留给真正的超限与错误 */
+.kcalbar .fill.hot { background:var(--gold); }
+.kcalbar .lbl {
+  display:flex; justify-content:space-between; gap:10px;
+  font-size:10.5px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+/* 营养数据条：点分隔，不再是一排小卡片 */
+.macros { display:flex; flex-wrap:wrap; align-items:center; gap:0; margin-top:10px; }
+.macros .m {
+  background:none; border:0; padding:0; font-size:11.5px; color:var(--ink-2);
+  white-space:nowrap;
+}
+.macros .m + .m { border-left:1px solid var(--line); padding-left:10px; margin-left:10px; }
+.macros .m b { color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; }
+.macros .m.good b { color:var(--green); }
+
+.items { list-style:none; margin:12px 0 0; padding:12px 0 0; border-top:1px solid var(--line); }
+.items > li { display:flex; justify-content:space-between; gap:12px; font-size:12.5px; color:var(--ink); padding:4px 0; }
+.items > li > span:last-child { color:var(--ink-2); text-align:right; white-space:nowrap; }
+.items > li + li { border-top:1px dashed var(--line); padding-top:9px; margin-top:6px; }
+.unit-list { margin:5px 0 0; padding:0; list-style:none; }
+.unit-list li {
+  display:flex; justify-content:space-between; gap:12px;
+  font-size:11.5px; color:var(--ink-2); padding:3px 0; line-height:1.6;
+}
+.unit-list li + li { border-top:1px dashed var(--line); }
+.unit-list li > span:last-child { text-align:right; white-space:nowrap; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+.repl-list { margin:5px 0 0; padding-left:16px; font-size:11px; color:var(--ink-2); line-height:1.75; }
+.ctag {
+  display:inline-block; margin-left:6px; padding:1px 6px;
+  font-size:10px; font-weight:600; line-height:1.5;
+  color:var(--red); background:var(--red-tint); border-radius:var(--radius-xs);
+  white-space:nowrap;
+}
+.ctag.veg { color:var(--green); background:var(--green-soft); }
+.badges { margin-top:10px; font-size:11px; color:var(--ink-3); }
+.items details, .sol details { margin-top:6px; }
+.items details > summary, .sol details > summary {
+  font-size:11px; color:var(--ink-3); cursor:pointer; list-style:none;
+}
+.items details > summary::-webkit-details-marker, .sol details > summary::-webkit-details-marker { display:none; }
+.items details > summary::before, .sol details > summary::before {
+  content:"›"; display:inline-block; margin-right:5px; color:var(--ink-3); transition:transform .15s;
+}
+.items details[open] > summary::before, .sol details[open] > summary::before { transform:rotate(90deg); }
+.items details > summary:hover, .sol details > summary:hover { color:var(--red); }
+/* 结果卡里的「可替换选项」复用了表单的 .adv 外壳；在卡内应当是一条可展开的细行，
+   而不是第二张带边框的控件。这里按卡内语境覆盖，不动物板书表单。 */
+.sol details.repl, .items details.repl {
+  border:0; border-top:1px solid var(--line); border-radius:0; background:none;
+  margin-top:10px; padding-top:2px;
+}
+.sol details.repl > summary, .items details.repl > summary {
+  display:flex; justify-content:flex-start; align-items:center;
+  padding:7px 0; font-size:11.5px; color:var(--ink-2);
+}
+.sol details.repl > summary::after, .items details.repl > summary::after { content:none; }
+.sol details.repl > summary:hover, .items details.repl > summary:hover { color:var(--red); }
+
+.buylist { list-style:none; margin:8px 0 0; padding:0; }
+.buylist li { white-space:normal; display:block; margin:4px 0; font-size:12.5px; }
+.buylist .b-cfg { font-size:11.5px; color:var(--ink-3); }
+.buylist .b-price { float:right; font-variant-numeric:tabular-nums; }
+.totalrow {
+  display:flex; justify-content:space-between;
+  font-weight:700; border-top:1px solid var(--line-2);
+  padding-top:8px; margin-top:8px; font-variant-numeric:tabular-nums;
+}
+.cardactions { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.viewtoggle { display:flex; gap:4px; border:1px solid var(--line); border-radius:var(--radius-s); padding:3px; background:var(--surface-2); }
+.viewtoggle button { flex:1; border:0; background:none; padding:6px 8px; font-size:12px; color:var(--ink-2); border-radius:var(--radius-xs); cursor:pointer; }
+.viewtoggle button.active { background:var(--surface); color:var(--red); font-weight:600; box-shadow:var(--shadow-1); }
+
+/* ---------- 10. 进度 / 骨架 ---------- */
+.progress-card {
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 18px; margin-bottom:14px; display:flex; flex-direction:column; gap:10px;
+  box-shadow:var(--shadow-1);
+}
+.progress-card .p-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.progress-card .p-stage { font-size:13.5px; font-weight:600; }
+.progress-card .p-elapsed { font-size:11.5px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.progress-card .p-track { position:relative; height:6px; border-radius:3px; background:#EFE7D6; overflow:hidden; }
+.progress-card .p-indet {
+  position:absolute; top:0; bottom:0; width:34%; border-radius:3px;
+  background:linear-gradient(90deg,var(--yellow),var(--red));
+  animation:pind 1.5s ease-in-out infinite;
+}
+@keyframes pind { 0% { left:-34%; } 100% { left:100%; } }
+.progress-card .p-stages { display:flex; flex-wrap:wrap; gap:6px; }
+.progress-card .p-chip {
+  font-size:11px; color:var(--ink-3); border:1px solid var(--line);
+  border-radius:999px; padding:2px 10px;
+}
+.progress-card .p-chip.done { color:var(--green); border-color:var(--green-line); background:var(--green-soft); }
+.progress-card .p-chip.cur { color:var(--red); border-color:#EFC3BC; background:var(--red-tint); font-weight:600; }
+.progress-card .p-note { font-size:11px; color:var(--ink-3); line-height:1.7; }
+.progress-card .p-cancel {
+  border:1px solid var(--line-2); background:var(--surface); color:var(--ink-2);
+  border-radius:var(--radius-s); padding:5px 12px; font-size:12px; cursor:pointer;
+}
+.progress-card .p-cancel:hover { color:var(--red); border-color:var(--red); background:var(--red-tint); }
+.progress-card .p-timeout { font-size:11.5px; color:var(--warn-ink); }
+
+@keyframes sh { 0%,100% { opacity:.55; } 50% { opacity:1; } }
+.skel { border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:12px; background:var(--surface); }
+.skel .l {
+  height:11px; border-radius:4px; margin-bottom:9px;
+  background:linear-gradient(90deg,var(--surface-3) 0%,#FBF6EA 50%,var(--surface-3) 100%);
+  background-size:200% 100%; animation:sh 1.4s ease infinite;
+}
+
+/* ---------- 11. McDNA 战报 ---------- */
+#mcdnaBox { display:none; margin-top:12px; max-width:940px; }
+#mcdnaBox .deck { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:100%; }
+#mcdnaBox img {
+  width:100%; aspect-ratio:540 / 720; display:block;
+  border-radius:12px; border:1px solid var(--line); background:var(--surface-3);
+}
+#mcdnaTools { display:none; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; }
+#mcdnaTools button, #mcdnaTools .dl {
+  display:inline-flex; align-items:center; justify-content:center;
+  height:34px; margin-top:0; padding:0 14px;
+  border:1px solid var(--line-2); border-radius:var(--radius-s);
+  background:var(--surface); color:var(--ink);
+  font-family:inherit; font-size:12.5px; line-height:1.2; text-decoration:none; cursor:pointer;
+  transition:border-color .15s, background .15s, color .15s;
+}
+#mcdnaTools button:hover, #mcdnaTools .dl:hover {
+  border-color:var(--red); color:var(--red); background:var(--red-tint); text-decoration:none;
+}
+#mcdnaMeta { font-size:11.5px; color:var(--ink-2); margin-top:10px; line-height:1.7; max-width:940px; }
+#mcdnaAgent {
+  display:none; margin-top:12px; max-width:940px;
+  border:1px solid var(--line); border-radius:var(--radius-s); padding:12px;
+  background:var(--surface-2);
+}
+#mcdnaAgent summary { cursor:pointer; font-size:13px; font-weight:600; }
+#mcdnaAgent textarea {
+  width:100%; margin-top:8px; border:1px solid var(--line-2); border-radius:var(--radius-s);
+  padding:9px; font:12px/1.6 ui-monospace,Consolas,monospace; background:#fff;
+}
+#mcdnaAgent .row { display:flex; gap:8px; margin-top:6px; }
+
+/* ---------- 12. 数据管理 ---------- */
+.deal-summary { font-size:11.5px; color:var(--ink-2); line-height:1.7; }
+.dealsearch { display:flex; align-items:center; gap:8px; margin:8px 0 4px; }
+.dealsearch input { flex:1; min-width:120px; padding:6px 10px; font-size:12px; }
+.dealsearch .cnt { font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+ul.dealul { list-style:none; margin:6px 0 0; padding:0; max-height:280px; overflow:auto; }
+ul.dealul li.dealrow {
+  display:flex; justify-content:space-between; gap:10px;
+  padding:6px 2px; border-bottom:1px dashed var(--line); font-size:11.5px;
+}
+ul.dealul li.dealrow:last-child { border-bottom:0; }
+ul.dealul li.dealrow .nm { color:var(--ink); }
+.recipe-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.recipe-grid .wide { grid-column:1 / -1; }
+.recipe-row { display:grid; grid-template-columns:120px minmax(120px,1.2fr) 76px minmax(110px,1fr) 34px; gap:6px; align-items:center; margin:6px 0; }
+.recipe-row input, .recipe-row select { min-width:0; padding:7px 8px; font-size:12px; }
+.recipe-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.recipe-deal-list { display:grid; gap:8px; margin-top:8px; }
+.recipe-deal {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center;
+  padding:9px 11px; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--surface-2);
+}
+.recipe-deal .deal-meta { color:var(--ink-3); font-size:11px; }
+.deal-source-btn {
+  border:0; background:none; color:var(--red); font-size:10.5px; cursor:pointer;
+  padding:0 0 0 6px; text-decoration:underline;
+}
+.recipe-form img { width:min(240px,100%); max-height:260px; object-fit:contain; border:1px solid var(--line); border-radius:var(--radius-s); background:var(--surface-3); }
+.recipe-result {
+  margin-top:10px; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-s);
+  background:var(--surface-2); color:var(--ink-2); font-size:11.5px;
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.recipe-records { display:grid; gap:6px; margin-top:8px; }
+.recipe-record {
+  display:flex; justify-content:space-between; align-items:flex-start; gap:8px;
+  border-bottom:1px dashed var(--line); padding:6px 2px; font-size:11.5px;
+}
+.recipe-item-del { border:0; background:none; color:var(--ink-3); cursor:pointer; font-size:14px; }
+.recipe-item-del:hover { color:var(--red); }
+/* 券行由 JS 生成并自带行内样式；这里只补底色与圆角，避免白得发飘 */
+.vrow { background:var(--surface-2); }
+#storebarWrap { padding-bottom:0; }
+
+/* ---------- 13. 覆盖层 / 设置 ---------- */
+.overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(30,22,10,.5);
+  display:flex; align-items:flex-start; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.overlay.show { opacity:1; pointer-events:auto; }
+.setup-card {
+  background:var(--surface); border-radius:16px;
+  max-width:480px; width:90%; margin:auto; padding:26px 26px 22px;
+  box-shadow:0 24px 64px -16px rgba(40,20,0,.45);
+}
+.setup-card h2 { font-size:17px; font-weight:800; margin-bottom:6px; letter-spacing:-.2px; }
+.setup-card .sub { font-size:12.5px; color:var(--ink-2); line-height:1.75; margin-bottom:16px; }
+.setup-step { display:flex; gap:10px; margin-bottom:12px; font-size:12.5px; line-height:1.7; color:var(--ink-2); }
+.setup-step .n {
+  width:22px; height:22px; flex:none; margin-top:1px;
+  border-radius:50%; background:var(--yellow); color:var(--ink);
+  font-size:11px; font-weight:800; display:grid; place-items:center;
+}
+.setup-step b { color:var(--ink); }
+.setup-actions { display:flex; gap:8px; margin-top:10px; }
+.setup-msg { font-size:12px; margin-top:9px; min-height:16px; }
+.setup-msg.ok { color:var(--green); }
+.setup-msg.err { color:var(--warn-ink); background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:var(--radius-s); padding:8px 10px; }
+.setup-msg.info { color:var(--ink-2); }
+.setup-skip { margin-top:14px; font-size:11.5px; color:var(--ink-3); }
+.setup-skip button { background:none; border:0; color:var(--red); cursor:pointer; text-decoration:underline; font-size:inherit; }
+.token-input { position:relative; }
+.token-input input { padding-right:46px; }
+.token-input .eye {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  border:0; background:none; cursor:pointer; font-size:14px; padding:4px; color:var(--ink-3);
+}
+.token-input .eye:hover { color:var(--ink); }
+/* 首次配置的主操作：可用时就是红色主按钮，不再是两个并列的弱按钮 */
+#verifyBtn:not(:disabled) { background:var(--red); border-color:var(--red); color:#fff; font-weight:600; }
+#verifyBtn:not(:disabled):hover { background:var(--red-deep); border-color:var(--red-deep); color:#fff; }
+
+.toast {
+  position:fixed; left:50%; bottom:26px; z-index:300;
+  transform:translateX(-50%) translateY(10px);
+  background:#241E15; color:#fff; font-size:12.5px;
+  padding:10px 20px; border-radius:999px;
+  max-width:88vw; text-align:center; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+  opacity:0; pointer-events:none; transition:opacity .22s, transform .22s;
+  box-shadow:0 10px 30px -12px rgba(0,0,0,.5);
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ---------- 14. 页脚 ---------- */
+.footer {
+  max-width:var(--maxw); margin:0 auto;
+  padding:18px 20px 34px;
+  border-top:1px solid var(--line);
+  font-size:11.5px; line-height:1.8; color:var(--ink-2);
+}
+.footer > div, .footer { text-wrap:pretty; }
+
+/* ---------- 15. 响应式 ---------- */
+@media (max-width:1100px) {
+  /* 品牌带中段窄了，水印会压到文案 */
+  .hero .topbar::after { display:none; }
+  /* 配方表内部是 5 列网格，窄一点就先让数据管理页单列，避免列宽挤爆 */
+  #mode-recipes.layout.two-col { flex-direction:column; }
+  #mode-recipes.layout.two-col > :first-child { flex:1 1 auto; width:100%; }
+}
+@media (max-width:900px) {
+  .layout.two-col { flex-direction:column; gap:16px; }
+  .layout.two-col > :first-child { flex:1 1 auto; width:100%; position:static; }
+  #mode-recipes.layout.two-col > :first-child { flex:1 1 auto; }
+}
+@media (max-width:760px) {
+  .hero .topbar { padding:12px 14px 12px; gap:11px; }
+  .brandmark { width:54px; height:54px; box-shadow:0 0 0 2px #fff, 0 0 0 3px rgba(140,80,0,.2); }
+  .topbar h1 { font-size:17px; }
+  .topbar .tagline { font-size:11px; margin-top:2px; max-width:46vw; }
+  /* 手机上 tagline 已经很窄，徽标另起一行只会把品牌带撑高 */
+  .tag-chip { display:none; }
+  .topbar .spacer { display:none; }
+  .topbar-pills { margin-left:auto; gap:4px; }
+  .pill { font-size:10.5px; padding:3px 8px; max-width:34vw; overflow:hidden; text-overflow:ellipsis; }
+  .pill.long { display:none; }
+
+  .navbar-inner { padding:0 8px; gap:8px; }
+  .tabs { flex:1 1 auto; gap:0; overflow:hidden; }
+  .tab {
+    flex:1 1 0; min-width:0; justify-content:center;
+    padding:11px 4px 10px; font-size:12.5px; gap:5px;
+  }
+  .tab > span:last-child { white-space:nowrap; }
+  .tab .t-ico { width:15px; height:15px; }
+  .tab small { display:none; }
+  .tab.active::after { left:10px; right:10px; }
+  .secondary-nav .btn-ghost { padding:6px; }
+  .secondary-nav .btn-ghost .lbl { display:none; }
+
+  .layout { padding:14px 14px 28px; gap:12px; }
+  .panel { padding:15px 16px; }
+  #mode-solve > :first-child, #mode-group > :first-child, #mode-mcdna > :first-child { padding:2px 16px 16px; }
+  .grid2 { grid-template-columns:1fr; }
+  .storebar .sbar-top { grid-template-columns:1fr 1fr; }
+  .storebar .sbar-top > :nth-child(2) { grid-column:1 / -1; }
+  .storebar .sbar-top > :last-child { grid-column:1 / -1; }
+  .macros .m { font-size:11px; }
+  .m-grid { grid-template-columns:1fr 1fr; }
+  .m-f-wishes, .m-f-taboos, .m-f-notes, .m-f-sugar, .m-f-alias, .m-f-coupon { grid-column:1 / -1; }
+  .sol { padding:14px 15px 12px; }
+  .sol-title { font-size:14px; }
+  .price { font-size:24px; }
+  .recipe-grid { grid-template-columns:1fr; }
+  .recipe-grid .wide { grid-column:auto; }
+  .recipe-row { grid-template-columns:1fr 1fr 68px 1fr 34px; }
+  #mcdnaBox .deck { grid-template-columns:1fr; }
+  #mcdnaTools button, #mcdnaTools .dl { flex:1 1 calc(50% - 4px); }
+  .footer { padding:16px 14px 28px; }
+}
+@media (max-width:430px) {
+  .hero .topbar { flex-wrap:wrap; row-gap:8px; }
+  .brandmark { width:46px; height:46px; }
+  /* 文案块必须能收缩，否则整块被挤到第二行，顶部只剩一枚孤零零的徽标 */
+  .brandcopy { flex:1 1 0; min-width:0; }
+  .topbar h1 { font-size:16px; white-space:nowrap; }
+  .topbar .tagline { max-width:none; line-height:1.45; }
+  .topbar-pills { margin-left:auto; flex-basis:100%; justify-content:flex-end; background:none; padding:0; }
+  .topbar .pill { max-width:42vw; }
+  .seg { grid-template-columns:1fr 1fr; }
+  .recipe-row { grid-template-columns:1fr 70px 34px; }
+  .recipe-row .recipe-item-spec, .recipe-row .recipe-item-range { grid-column:span 2; }
+  .sol-head { flex-direction:column; gap:6px; }
+  .price { text-align:left; }
+  .price small { text-align:left; }
+  .crow { grid-template-columns:1fr 52px 1fr; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  .sol { animation:none; }
+  .progress-card .p-indet { animation:none; left:0; width:100%; opacity:.5; }
+}
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     吉祥物 SVG sprite（内联）
+     happy=空态/推荐  think=加载中  sad=错误/取消  sleep=等待  cheer=成功/完成
+     ===================================================================== -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- 头部路径（共享） -->
+    <path id="mm-hp" d="M60 30C86 30 97 48 97 67C97 88 81 101 60 101C39 101 23 88 23 67C23 48 34 30 60 30Z"/>
+    <clipPath id="mm-hc"><use href="#mm-hp"/></clipPath>
+    <!-- 刘海簇（左右对称） -->
+    <g id="mm-tuft">
+      <polygon points="36,60 8,56 21,49 3,38 24,40 13,21 33,35 48,40" fill="#D32A1E"/>
+      <polygon points="24,40 13,21 33,35 48,40 40,47" fill="#FF5C44"/>
+      <polygon points="36,60 8,56 21,49 44,52" fill="#AE1E14"/>
+    </g>
+  </defs>
+
+  <!-- ---- 身体基础（所有表情复用） ---- -->
+  <symbol id="mm-base" viewBox="0 0 120 120">
+    <!-- 头发高光碎片 -->
+    <polygon points="108,46 113,54 108,63 103,54" fill="#FFD84D" opacity=".9"/>
+    <polygon points="9,76 13,83 9,90 5,83" fill="#FFE9A0" opacity=".7"/>
+    <!-- 左右刘海 -->
+    <use href="#mm-tuft"/>
+    <use href="#mm-tuft" transform="translate(120 0) scale(-1 1)"/>
+    <!-- 顶发（切面马尾风） -->
+    <polygon points="58,36 68,12 98,3 86,20 104,24 78,40" fill="#D32A1E"/>
+    <polygon points="68,12 98,3 86,20 74,24" fill="#FF5C44"/>
+    <polygon points="86,20 104,24 78,40 74,30" fill="#AE1E14"/>
+    <!-- 衣领 / 颈部（麦当劳黄） -->
+    <polygon points="28,120 31,101 46,96 60,105 74,96 89,101 92,120" fill="#FFC72C"/>
+    <polygon points="60,105 74,96 89,101 92,120 60,120" fill="#E9A800"/>
+    <polygon points="31,101 46,96 60,105 48,120 28,120" fill="#FFE17F"/>
+    <polygon points="47,97 60,107 73,97 60,113" fill="#D32A1E"/>
+    <!-- 脸部底色 -->
+    <use href="#mm-hp" fill="#FFE8D2"/>
+    <!-- 脸部切面阴影 -->
+    <g clip-path="url(#mm-hc)">
+      <polygon points="23,67 40,62 44,96 30,90" fill="#F8D2B6" opacity=".7"/>
+      <polygon points="97,67 80,62 76,96 90,90" fill="#FFF5EA" opacity=".5"/>
+      <polygon points="44,96 60,101 76,96 60,90" fill="#F6CBAE" opacity=".8"/>
+    </g>
+    <!-- 发色（盖住脸部顶端） -->
+    <path d="M21 64C17 40 36 25 60 25C84 25 103 40 99 64L89 51L79 62L69 47L59 63L49 47L39 62L30 51Z" fill="#D32A1E"/>
+    <polygon points="21,64 30,51 39,62 36,40 26,46" fill="#AE1E14"/>
+    <polygon points="49,47 59,63 69,47 60,30 52,33" fill="#FF5C44"/>
+    <polygon points="79,62 89,51 99,64 94,42 84,38" fill="#C42018"/>
+  </symbol>
+
+  <!-- ---- 表情变体 ---- -->
+  <symbol id="mm-happy" viewBox="0 0 120 120">
+    <use href="#mm-base"/>
+    <ellipse cx="34" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <ellipse cx="86" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <ellipse cx="44" cy="74" rx="4" ry="8" fill="#1E120A"/>
+    <ellipse cx="76" cy="74" rx="4" ry="8" fill="#1E120A"/>
+    <ellipse cx="45.6" cy="70" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <ellipse cx="77.6" cy="70" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <path d="M53 90Q60 97 67 90" fill="none" stroke="#7A3020" stroke-width="2.5" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="mm-think" viewBox="0 0 120 120">
+    <use href="#mm-base"/>
+    <ellipse cx="34" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <ellipse cx="86" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <ellipse cx="46" cy="72" rx="4" ry="8" fill="#1E120A"/>
+    <ellipse cx="78" cy="72" rx="4" ry="8" fill="#1E120A"/>
+    <ellipse cx="47.6" cy="67.5" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <ellipse cx="79.6" cy="67.5" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <ellipse cx="61" cy="92" rx="3" ry="3.5" fill="#7A3020"/>
+  </symbol>
+  <symbol id="mm-sad" viewBox="0 0 120 120">
+    <use href="#mm-base"/>
+    <ellipse cx="34" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".55"/>
+    <ellipse cx="86" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".55"/>
+    <ellipse cx="44" cy="75" rx="4" ry="7.5" fill="#1E120A"/>
+    <ellipse cx="76" cy="75" rx="4" ry="7.5" fill="#1E120A"/>
+    <ellipse cx="45.6" cy="71.5" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <ellipse cx="77.6" cy="71.5" rx="1.4" ry="2.4" fill="#fff" opacity=".9"/>
+    <path d="M37 65L50 61M83 65L70 61" stroke="#1E120A" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M53 95Q60 88 67 95" fill="none" stroke="#7A3020" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="83,80 87,88 83,92 79,88" fill="#8FD3FF"/>
+  </symbol>
+  <symbol id="mm-sleep" viewBox="0 0 120 120">
+    <use href="#mm-base"/>
+    <ellipse cx="34" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <ellipse cx="86" cy="86" rx="7.5" ry="4" fill="#FF9DAA" opacity=".8"/>
+    <path d="M37 74Q44 80 51 74M69 74Q76 80 83 74" fill="none" stroke="#1E120A" stroke-width="2.7" stroke-linecap="round"/>
+    <path d="M55 91Q60 94 65 91" fill="none" stroke="#7A3020" stroke-width="2.4" stroke-linecap="round"/>
+    <text x="99" y="35" font-size="13" fill="#D32A1E" font-weight="800" font-family="serif">z</text>
+    <text x="108" y="26" font-size="10" fill="#D32A1E" font-weight="800" font-family="serif">z</text>
+  </symbol>
+  <symbol id="mm-cheer" viewBox="0 0 120 120">
+    <use href="#mm-base"/>
+    <ellipse cx="33" cy="86" rx="8" ry="4.5" fill="#FF8C9C" opacity=".85"/>
+    <ellipse cx="87" cy="86" rx="8" ry="4.5" fill="#FF8C9C" opacity=".85"/>
+    <path d="M37 74Q44 65 51 74M69 74Q76 65 83 74" fill="none" stroke="#1E120A" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M50 87Q60 103 70 87Z" fill="#7A2A1A"/>
+    <path d="M54 93Q60 99 66 93Q60 90 54 93Z" fill="#FF8A8A"/>
+    <polygon points="14,58 17,65 23,67 17,69 14,75 11,69 5,67 11,65" fill="#FFC72C"/>
+    <polygon points="106,70 107.5,75 112,76.5 107.5,78 106,83 104.5,78 100,76.5 104.5,75" fill="#FFC72C"/>
+  </symbol>
+</svg>
+
+<!-- =====================================================================
+     品牌带（topbar 保留原 ID 和 CSS 类，切换到 .hero 包装容器）
+     ===================================================================== -->
+<div class="hero">
+  <div class="topbar">
+    <div class="brandmark" title="麦麦智能管家">
+      <img src="assets/brand.png" alt="麦麦智能管家 · 品牌徽标" width="72" height="72" decoding="async">
+    </div>
+    <div class="brandcopy">
+      <h1>麦麦智能管家</h1>
+      <div class="tagline">拼单仲裁 × 双预算精算 × McDNA 战报<span class="tag-chip">麦当劳官方 MCP · 实时数据</span></div>
+    </div>
+    <div class="spacer"></div>
+    <!-- 两个状态胶囊放在同一容器里：窄屏放不下时整体换行，不会只剩一个孤零零掉到下一行 -->
+    <div class="topbar-pills">
+      <span class="pill" id="tokenPill" style="cursor:pointer" title="点击管理麦当劳 Token 配置">连接状态检查中…</span>
+      <span class="pill" id="verPill" title="服务端版本（读取 /api/health）">版本检查中…</span>
+    </div>
+  </div>
+</div><!-- /.hero -->
+
+<!-- 主导航：白底导航条，压在品牌带下沿；高级数据管理收到最右侧，不再是一枚悬空的虚线胶囊 -->
+<div class="navbar">
+  <div class="navbar-inner">
+    <div class="tabs" id="tabs" aria-label="点餐功能">
+      <button type="button" class="tab active" data-mode="solve">
+        <svg class="t-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.2"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/></svg>
+        <span>双预算精算<small>单人 · 热量×钱包求解</small></span>
+      </button>
+      <button type="button" class="tab" data-mode="group">
+        <svg class="t-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.3"/><path d="M3.4 19.6a5.6 5.6 0 0 1 11.2 0"/><path d="M16.2 5.1a3.3 3.3 0 0 1 0 5.8"/><path d="M17.6 19.6a5.6 5.6 0 0 0-3.1-5"/></svg>
+        <span>麦门拼单仲裁<small>多人 · 比价 × 分账</small></span>
+      </button>
+      <button type="button" class="tab" data-mode="mcdna">
+        <svg class="t-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.2" y="4.4" width="17.6" height="15.2" rx="2.6"/><path d="M7.6 9.2h8.8M7.6 12.8h5.6M15.4 16.2h1.2"/></svg>
+        <span>McDNA 战报<small>麦门状态栏 · 双面分享卡</small></span>
+      </button>
+    </div>
+    <div class="secondary-nav">
+      <button class="btn-ghost" id="openDataManagement" type="button" title="维护券规则、官方 SKU、营养补录与研究数据">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4 6.5h8M17 6.5h3M4 12h2.5M11.5 12h8.5M4 17.5h9M18 17.5h2"/><circle cx="14.5" cy="6.5" r="2.3"/><circle cx="9" cy="12" r="2.3"/><circle cx="15.5" cy="17.5" r="2.3"/></svg>
+        <span class="lbl">高级数据管理</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+
+<!-- 首次配置引导层（无 Token 时自动显示；面板功能本体仍可浏览离线项） -->
+<div class="overlay" id="setupOverlay">
+  <div class="setup-card">
+    <h2>连接你的麦当劳账户</h2>
+    <div class="sub">麦麦智能管家使用<b>你自己的</b>麦当劳 MCP Token 访问实时菜单与计价（每人一份，互不相通）。Token 只保存在你电脑的本地数据目录，不会上传、不进入日志，也不随分享内容外发。</div>
+    <div class="setup-step"><span class="n">1</span><span>前往麦当劳官方 MCP 开放平台，<b>由你本人</b>注册并申请个人 Token（免费，按官方指南操作）。<br><a href="https://open.mcd.cn/mcp" target="_blank" rel="noopener" id="portalLink">打开麦当劳官方 MCP 平台 ↗</a>　<a href="https://github.com/M-China/mcd-mcp-server" target="_blank" rel="noopener" id="guideLink">申请指南 ↗</a></span></div>
+    <div class="setup-step"><span class="n">2</span><span>复制 Token，粘贴到下方输入框（默认遮蔽显示，点 👁 可核对）。</span></div>
+    <div class="token-input" style="margin-top:12px">
+      <input id="tokenInput" type="password" placeholder="粘贴你的 McDonald's MCP Token" autocomplete="off" spellcheck="false">
+      <button class="eye" id="eyeBtn" title="显示/隐藏">👁</button>
+    </div>
+    <div class="setup-actions">
+      <button class="btn-ghost" id="verifyBtn" style="flex:1" disabled>验证并保存</button>
+      <button class="btn-ghost" id="refreshSetupBtn" title="重新检查本地配置">↻ 重新检查</button>
+    </div>
+    <div class="setup-msg" id="setupMsg"></div>
+    <div class="hint" style="margin-top:10px">验证只调用<b>时间接口</b>（只读连通性检查），不会读取订单历史、配送地址等个人数据。配置一次后跨工作区自动复用；升级/回退不会清除。之后想更换或清除 Token：点击顶部「连接状态」。</div>
+    <div class="setup-skip">暂不配置？<button id="skipSetup">先浏览基础功能</button>（实时配餐需要 Token）</div>
+  </div>
+</div>
+
+<!-- 设置面板（更换 / 清除 / 验证 Token） -->
+<div class="overlay" id="settingsOverlay">
+  <div class="setup-card">
+    <h2>连接设置</h2>
+    <div class="sub">麦当劳 MCP Token 的本机状态。凭据仅存于本地数据目录的 config.json，不进入日志、诊断报告或分享内容。</div>
+    <div id="settingsBody" style="font-size:13px; line-height:1.8">
+      <div style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--line); border-radius:var(--radius-s); padding:10px 12px; margin-bottom:8px">
+        <span><span class="statusdot" id="setDot"></span>麦当劳 MCP Token<br><small style="color:var(--muted)" id="setTokenInfo">…</small></span>
+      </div>
+      <div style="display:flex; gap:8px">
+        <button class="btn-ghost" id="setVerifyBtn" style="flex:1">验证连接（只读）</button>
+        <button class="btn-ghost" id="setChangeBtn" style="flex:1">更换 Token</button>
+        <button class="btn-ghost" id="setClearBtn" style="flex:1">清除</button>
+      </div>
+      <div id="setChangeBox" style="display:none; margin-top:12px">
+        <div class="token-input">
+          <input id="setTokenInput" type="password" placeholder="粘贴新的 Token" autocomplete="off" spellcheck="false">
+          <button class="eye" id="setEyeBtn">👁</button>
+        </div>
+        <div class="setup-actions"><button class="btn-ghost" id="setSaveBtn" style="flex:1">验证并保存新 Token</button></div>
+      </div>
+      <div class="setup-msg" id="setMsg"></div>
+      <div class="hint">验证只调用时间接口（只读）。清除后实时配餐不可用，可随时重新配置；环境变量 MCD_MCP_TOKEN 来源的 Token 需从启动环境移除。</div>
+      <div class="hint" id="setVersion"></div>
+    </div>
+    <div class="setup-actions"><button class="btn-ghost" id="setCloseBtn" style="width:100%">关闭</button></div>
+  </div>
+</div>
+
+<!-- 公共：门店选择（精算与拼单共用；战报/数据管理模式下收起，避免占据首屏） -->
+
+<div class="layout" id="storebarWrap">
+  <div class="panel storebar" id="storebar" style="grid-column:1/-1; margin-bottom:0">
+    <h2><span class="no">◆</span>选择门店（精算与拼单共用）</h2>
+    <div class="sbar-top">
+      <div><label class="lb">城市</label><select id="citySel"></select></div>
+      <div><label class="lb">地标细化（选填）</label><input type="text" id="kwInput" placeholder="如 人民广场 / 火车站"></div>
+      <div style="display:flex; gap:8px; align-self:end">
+        <button class="btn-ghost" id="findBtn" style="flex:1">查询门店</button>
+        <button class="btn-ghost" id="locBtn">📍 定位</button>
+      </div>
+    </div>
+    <div class="sbar-list" id="storeList"><div class="note" style="padding:4px">加载中…</div></div>
+    <div class="sel-line" id="storeSelLine"></div>
+    <button class="sbar-hint-toggle" id="storeHintToggle">显示查询条件</button>
+    <div class="hint" id="storeHint">官方接口单次最多返回 5 家候选门店；「📍 定位」读取浏览器位置自动匹配最近城市（失败时给出原因，可直接下拉选择城市 + 关键词查询）。列表会自动选中第一家营业门店（可见可换），精算与拼单都使用此处选中的门店；未查询到门店前请先点击「查询门店」。</div>
+  </div>
+</div>
+
+<!-- 模式一：双预算精算 -->
+<div class="layout two-col" id="mode-solve">
+  <!-- 左栏：表单面板（sticky） -->
+  <div style="position:sticky; top:16px; height:fit-content">
+    <div class="panel">
+      <h2><span class="no">1</span>快捷热量档（一键预填）</h2>
+      <div class="seg" style="grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px">
+        <button type="button" class="btn-kcal" data-kcal="500">轻食<small>500 kcal</small></button>
+        <button type="button" class="btn-kcal" data-kcal="750">中餐<small>750 kcal</small></button>
+        <button type="button" class="btn-kcal" data-kcal="1000">大餐<small>1000 kcal</small></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">2</span>预算与优化目标</h2>
+      <div class="grid2">
+        <div><label class="lb">热量目标</label><div class="inwrap"><input id="kcal" type="text" inputmode="decimal" value="600" class="has-unit num" data-min="1" data-max="5000" data-int="1" autocomplete="off"><span class="unit">kcal</span></div></div>
+        <div><label class="lb">价格预算</label><div class="inwrap"><input id="yuan" type="text" inputmode="decimal" value="25" class="has-unit num" data-min="1" data-max="500" autocomplete="off"><span class="unit">元</span></div></div>
+      </div>
+      <div class="hint" style="margin-top:8px"><b>价格预算是上限</b>（不花满也没关系，省下的就是省的）；<b>热量是希望达到的目标</b>（算法自动贴合到目标附近）。</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">3</span>选填：用餐时间</h2>
+      <div class="inwrap"><input id="targetTime" type="text" placeholder="留空 = 现在；08:00 或 2026-10-19 12:00" autocomplete="off"></div>
+      <div class="hint" style="margin-top:6px">早餐与常规时段的商品和价格不同。预约时将按该时刻查菜单。</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">4</span>选填：主食份数</h2>
+      <div class="seg" id="stapleSeg" style="grid-template-columns:repeat(4,1fr)">
+        <input type="radio" name="stapleN" id="st-0" value="0" checked><label for="st-0">不限</label>
+        <input type="radio" name="stapleN" id="st-1" value="1"><label for="st-1">至少 1</label>
+        <input type="radio" name="stapleN" id="st-2" value="2"><label for="st-2">至少 2</label>
+        <input type="radio" name="stapleN" id="st-3" value="3"><label for="st-3">至少 3</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">5</span>选填：优化目标</h2>
+      <div class="seg" id="objSeg" style="grid-template-columns:1fr 1fr">
+        <input type="checkbox" name="obj" id="o-price" value="price"><label for="o-price">更省钱<small data-pri></small></label>
+        <input type="checkbox" name="obj" id="o-protein" value="protein"><label for="o-protein">蛋白质↑<small data-pri></small></label>
+        <input type="checkbox" name="obj" id="o-sodium" value="sodium"><label for="o-sodium">钠↓<small data-pri></small></label>
+        <input type="checkbox" name="obj" id="o-carb" value="carb"><label for="o-carb">碳水↓<small data-pri></small></label>
+      </div>
+      <div class="hint" style="margin-top:6px">可选 ≤2 项，按点击顺序为优先级。</div>
+    </div>
+
+    <details class="adv">
+      <summary>高级：营养约束（可选）</summary>
+      <div class="inner">
+        <div class="crow"><span class="cname">钠<small>mg</small></span><select data-op><option>≤</option><option>≥</option></select><input type="text" inputmode="decimal" data-metric="sodium" placeholder="不限制"></div>
+        <div class="crow"><span class="cname">碳水<small>g</small></span><select data-op><option>≤</option><option>≥</option></select><input type="text" inputmode="decimal" data-metric="carb" placeholder="不限制"></div>
+        <div class="crow"><span class="cname">蛋白质<small>g</small></span><select data-op><option>≥</option><option>≤</option></select><input type="text" inputmode="decimal" data-metric="protein" placeholder="不限制"></div>
+        <div class="crow"><span class="cname">脂肪<small>g</small></span><select data-op><option>≤</option><option>≥</option></select><input type="text" inputmode="decimal" data-metric="fat" placeholder="不限制"></div>
+        <div class="crow"><span class="cname">蔬菜份<small>沙拉/玉米/苹果片</small></span><select data-op><option>≥</option><option>≤</option></select><input type="text" inputmode="decimal" data-metric="veggie" placeholder="不限制"></div>
+        <div class="hint">硬约束求解，必须满足才会推荐。留空 = 不限制。</div>
+      </div>
+    </details>
+
+    <button class="btn-primary" id="go" style="width:100%; margin-top:12px">开 始 精 算</button>
+  </div>
+
+  <!-- 右栏：状态与结果 -->
+  <div>
+    <div class="statusline" id="status" style="display:none"></div>
+    <div id="results">
+      <div class="empty">
+        <div class="empty-title">结果会显示在这里</div>
+        <div class="empty-body">左侧设定热量目标与价格上限，点「开始精算」。程序会在预算内给出至多三组可下单组合，标出第一推荐与备选，并附逐项价格与营养口径。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模式二：拼单仲裁 -->
+<div class="layout two-col" id="mode-group" style="display:none">
+  <div>
+    <div class="panel">
+      <h2><span class="no">1</span>粘贴群聊（可选）</h2>
+      <textarea id="pasteBox" rows="5" placeholder="把群里 3~5 人的拼单发言直接粘贴进来，例如：
+小李：要麦辣鸡腿堡+可乐，不吃香菜
+王姐：控卡450以内，来个麦香鱼
+阿强：想吃炸鸡，无糖可乐"></textarea>
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button class="btn-ghost" id="parseBtn" style="flex:1">解析并回填确认卡</button>
+        <button class="btn-ghost" id="demoFillBtn">填入示例</button>
+      </div>
+      <div class="confirm-strip" id="confirmStrip">已解析为下方成员表——<b>这是确认卡</b>：请逐行核对修正后再仲裁（一次性确认，不做多轮问答）。</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">2</span>用餐时间（选填 · 预约口径）</h2>
+      <div class="inwrap"><input id="groupTargetTime" type="text" placeholder="留空 = 现在；可填 08:00 或 2026-10-19 12:00" autocomplete="off"></div>
+      <div class="hint" style="margin-top:6px">预约到早餐时段时，午晚餐专属商品不会进入可购池（反之亦然）；菜单、套餐构成与计价都按该时刻查询。</div>
+    </div>
+
+    <div class="panel">
+      <h2><span class="no">3</span>成员确认卡（可编辑）</h2>
+      <div id="memberList"></div>
+      <button class="btn-ghost" id="addMember" style="width:100%; margin-top:2px">＋ 添加成员（最多 8 人）</button>
+      <div class="hint">心愿按关键词匹配当前门店菜单；「无糖」可勾选下方复选框，或直接写入禁忌（两条路径等价：保留零度可乐，排除含糖饮品）；「备注」用于少冰 / 去酸黄瓜 / 换餐等特制需求，会进入订单备注。未匹配的心愿会如实列出而不是编造。个人券只冲减本人应付，请核对券的适用条件。</div>
+    </div>
+    <div class="panel">
+      <h2><span class="no">4</span>我的券（可选 · 自持外部官方券）</h2>
+      <div id="voucherList"></div>
+      <button class="btn-ghost" id="addVoucher" style="width:100%; margin-top:2px">＋ 添加自持券（兑换券，非现金立减）</button>
+      <div class="hint">录入您已购买的抖音/美团等官方渠道兑换券，系统按「参考价」纳入三轨比价并给出核销指引（抖音券可绑麦当劳 APP「我的-到店券」，同手机号）。现金立减券请填在成员表「券(元)」列（冲减本人应付）。本工具不代购、不托管券码、不做跳转链接。</div>
+    </div>
+    <button class="btn-primary" id="goGroup">开 始 拼 单 仲 裁</button>
+  </div>
+
+  <div>
+    <div class="statusline" id="groupStatus" style="display:none"></div>
+    <div id="groupResults">
+      <div class="empty">
+        <div class="empty-title">还没有仲裁结果</div>
+        <div class="empty-body">把群聊粘贴到左侧，或直接编辑成员确认卡，点「开始拼单仲裁」。输出为加购指引与透明分账卡：不代下单、不托管资金。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 模式四：券配方核验与营养补录（本地数据管理，无 Token 亦可查看已有记录） -->
+<div class="layout two-col" id="mode-recipes" style="display:none">
+  <div>
+    <div class="panel">
+      <h2><span class="no">1</span>团购券核验与配方库</h2>
+      <div class="hint" style="margin-top:0">图片可辅助读出可见商品文字，但不等于完整券面构成证据。请人工核对商品、数量、任选范围、补差、适用门店和核销规则；未确认的券保持价格候选，不进入自动精算。视觉识别不证明图片外的规则。</div>
+      <div class="recipe-actions">
+        <button class="btn-ghost" id="refreshRecipeDeals">查询当前门店团单（不必先精算）</button>
+        <button class="btn-ghost" id="loadRecipeCombos">读取当前门店官方套餐/SKU</button>
+        <button class="btn-ghost" id="newRecipeBtn">新建核验草稿</button>
+      </div>
+      <div id="recipeDealSummary" class="deal-summary"></div>
+      <div id="recipeDealList" class="recipe-deal-list"></div>
+      <details class="adv" style="margin-top:12px">
+        <summary>导入研究配方（先预览冲突、营养与适用范围，再确认发布）</summary>
+        <div class="inner">
+          <label class="lb">选择 JSON 文件（可选）<input type="file" id="recipeImportFile" accept=".json,application/json"></label>
+          <label class="lb">或粘贴 JSON（数组或 recipes 对象）<textarea id="recipeImportJson" rows="5" placeholder="粘贴已研究的配方 JSON；预览不会写入任何数据"></textarea></label>
+          <div class="recipe-actions"><button class="btn-ghost" id="previewRecipeImport">预览导入内容</button><button class="btn-ghost" id="confirmRecipeImport" disabled>确认导入并发布可通过项</button></div>
+          <div id="recipeImportPreview" class="recipe-result" aria-live="polite">尚未预览；预览只读，不会保存。含冲突或核验阻断的条目不会发布。</div>
+        </div>
+      </details>
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;color:var(--muted);font-size:12px">配方记录（预置只读；用户配方可删除）</summary>
+        <div class="recipe-actions"><input type="text" id="recipeSearch" placeholder="搜索配方名 / 证据" style="flex:1"><button class="btn-ghost" id="searchRecipesBtn">搜索</button></div>
+        <div id="recipeRecords" class="recipe-records"></div>
+      </details>
+    </div>
+    <div class="panel recipe-form" id="recipeFormPanel" style="display:none">
+      <h2><span class="no">2</span>券面人工核验草稿</h2>
+      <div class="recipe-grid">
+        <label class="lb">配方 ID<input id="recipeId" type="text" placeholder="如 rcp-deal-v1"></label>
+        <label class="lb">商品/券名<input id="recipeName" type="text" placeholder="按 CPS 商品名录入"></label>
+        <label class="lb wide">别名（顿号或逗号分隔）<input id="recipeAliases" type="text" placeholder="用于匹配同一券的别名"></label>
+        <label class="lb">配方类型<select id="recipeResolve"><option value="explicit">逐项明确（explicit）</option><option value="combo-name">官方同名套餐（combo-name）</option><option value="pattern">官方规则型（pattern）</option></select></label>
+        <label class="lb">官方菜单套餐/SKU<select id="recipeCombo"><option value="">先读取当前门店官方菜单</option></select></label>
+        <label class="lb wide">券面图 URL<input id="recipeHeadUrl" type="url" placeholder="https://…（可从 CPS 商品记录复制）"><a id="recipeImageLink" href="#" target="_blank" rel="noopener" style="display:none">在新窗口查看券面图</a><img id="recipeImagePreview" alt="券面图人工核验预览" style="display:none"></label>
+        <div class="wide">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:12px">券面组成（每一条都要按券面核对）</b><button class="btn-ghost" id="addRecipeItem">＋ 添加构成项</button></div>
+          <div id="recipeItems"></div>
+          <div class="hint">fixed=明确固定商品；choice=官方 SKU 轮次任选（需绑定官方 SKU）；combo-ref=整包引用官方同名套餐。券图只显示一部分商品时，不得据图推断完整任选范围。</div>
+        </div>
+        <label class="lb">适用门店/城市范围<input id="recipeScope" type="text" placeholder="如 上海；具体以券面/官方规则为准"></label>
+        <label class="lb">限购 / 有效期 / 时段<input id="recipeTerms" type="text" placeholder="记录券面原文，不确定写待确认"></label>
+        <label class="lb">购买路径<input id="recipeBuyPath" type="text" value="美团/大众点评 APP 麦当劳门店团购页（以下单页为准）"></label>
+        <label class="lb">核销路径<input id="recipeRedeemPath" type="text" value="到店出示券码核销（以券面说明为准）"></label>
+        <label class="lb">参考价（元）<input id="recipePrice" type="text" inputmode="decimal" placeholder="可留空，按 CPS 实时价"></label>
+        <label class="lb">规则版本<input id="recipeRuleVersion" type="text" value="manual-v1"></label>
+        <label class="lb wide">来源与核验证据<textarea id="recipeEvidence" rows="3" placeholder="记录券面原文、识图候选、官方菜单/SKU 匹配方式、任选/补差核验、适用范围来源；不要仅写‘模型识图’"></textarea></label>
+        <label class="lb">核验日期<input id="recipeVerifiedAt" type="date"></label>
+      </div>
+      <div class="recipe-actions">
+        <button class="btn-ghost" id="verifyRecipeBtn">先核验（不保存）</button>
+        <label class="m-check"><input type="checkbox" id="forceRecipeSave">我已确认风险，仍要强制保存未通过项</label>
+        <button class="btn-ghost" id="saveRecipeBtn" disabled>核验通过后保存</button>
+      </div>
+      <div id="recipeCheckResult" class="recipe-result" aria-live="polite">尚未核验。保存前会检查固定商品的营养来源、任选项的官方 SKU 绑定等。</div>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <h2><span class="no">3</span>官网未收录营养补录</h2>
+      <div class="hint" style="margin-top:0">官方营养数据优先，补录不会覆盖官网命中。请记录每项营养的数值来源与口径；未知营养不能填 0 伪装成已知。来源分级并非准确性认证，第三方数据需要人工复核。</div>
+      <div class="recipe-grid" style="margin-top:10px">
+        <label class="lb">食品名称<input id="nutriName" type="text" placeholder="如 双层脆鸡堡"></label>
+        <label class="lb">规格<input id="nutriSpec" type="text" placeholder="如 中 / 大 / 1个"></label>
+        <div class="wide"><button class="btn-ghost" id="checkOfficialNutri">检查官方营养库优先命中</button><span id="officialNutriHint" class="hint" style="display:block"></span></div>
+        <label class="lb">热量 kcal<input id="nutriKcal" type="text" inputmode="decimal"></label>
+        <label class="lb">蛋白质 g<input id="nutriProtein" type="text" inputmode="decimal"></label>
+        <label class="lb">脂肪 g<input id="nutriFat" type="text" inputmode="decimal"></label>
+        <label class="lb">碳水 g<input id="nutriCarb" type="text" inputmode="decimal"></label>
+        <label class="lb">钠 mg<input id="nutriSodium" type="text" inputmode="decimal"></label>
+        <label class="lb">来源类别<select id="nutriSourceType"><option value="official">官方</option><option value="brand">品牌一方（如品牌 APP 页面）</option><option value="third-party" selected>第三方数据库</option><option value="secondary">二手文章/转述</option><option value="user">用户提交</option><option value="unknown">来源不明</option></select></label>
+        <label class="lb">来源名称<input id="nutriSource" type="text" placeholder="如 FatSecret Platform API"></label>
+        <label class="lb wide">来源 URL<input id="nutriSourceUrl" type="url" placeholder="https:// 原始来源页面"></label>
+        <label class="lb wide">核验证据<textarea id="nutriEvidence" rows="3" placeholder="每份重量、原文数据、缺项、为何适用于本品的说明"></textarea></label>
+        <label class="lb">核验日期<input id="nutriVerifiedAt" type="date"></label>
+        <label class="m-check wide"><input type="checkbox" id="nutriConfirmed">我已核对这五项数值及其适用规格；若某项未知，我不会用 0 代替真实值</label>
+      </div>
+      <div class="recipe-actions"><button class="btn-ghost" id="saveNutritionBtn">保存补录</button><button class="btn-ghost" id="refreshNutritionBtn">刷新补录记录</button></div>
+      <div id="nutritionRecords" class="recipe-records"></div>
+    </div>
+    <!-- v1.4.9 N01：分时段产品目录（官方菜单只读） -->
+    <div class="panel">
+      <h2><span class="no">4</span>分时段产品目录（官方菜单 · 只读）</h2>
+      <div class="hint" style="margin-top:0">按餐段锚点（默认 08:00 / 12:00 / 18:00）分别向官方查询，合并成「门店 × 日期」的分时段目录，再按目标时段生成可售池。<b>目录存在不代表目标时间可售</b>；某餐段查询失败时，该时段一律按「无法确认可售」处理，不用其他时段推断；同 code 在早餐与常规时段的价差分别保留，不互相覆盖。</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+        <input id="periodCatalogDate" type="date" style="max-width:170px">
+        <input id="periodCatalogTime" type="text" placeholder="目标时段 08:00（选填）" style="max-width:180px">
+        <button class="btn-ghost" id="loadPeriodCatalog">读取分时段目录</button>
+      </div>
+      <div id="periodCatalogOut" class="deal-summary">尚未读取。选中门店后点击「读取分时段目录」。</div>
+    </div>
+
+    <!-- v1.4.6 R10：查询/候选/技术诊断统一放在高级数据管理，消费者结果页不再出现 -->
+    <div class="panel">
+      <h2><span class="no">5</span>查询与候选诊断（后台）</h2>
+      <div class="hint" style="margin-top:0">这里汇总最近一次精算/拼单的渠道查询、价格候选与建池统计，供核验与排障使用；普通结果页只保留可执行的购买信息。</div>
+      <div id="dataDiagnostics" class="deal-summary">暂无诊断数据（先在「双预算精算」或「麦门拼单仲裁」中执行一次查询）</div>
+    </div>
+  </div>
+</div>
+
+<!-- 模式三：McDNA -->
+<div class="layout two-col" id="mode-mcdna" style="display:none">
+  <div>
+    <div class="panel">
+      <h2><span class="no">1</span>生成 McDNA 战报</h2>
+      <label class="lb" style="margin-top:2px">数据来源</label>
+      <div class="seg" style="grid-template-columns:1fr 1fr">
+        <input type="radio" name="mcdnasrc" id="mc-demo" value="demo" checked><label for="mc-demo">演示样本<small>真实订单接入前</small></label>
+        <input type="radio" name="mcdnasrc" id="mc-real" value="real"><label for="mc-real">真实订单<small>需账号有近期订单</small></label>
+      </div>
+      <label class="lb" style="margin-top:14px">金额显示（分享卡默认脱敏）</label>
+      <div class="seg" style="grid-template-columns:1fr 1fr">
+        <input type="radio" name="mcdnaamt" id="mc-tier" value="tier" checked><label for="mc-tier">档位脱敏<small>¥ / ¥¥ / ¥¥¥</small></label>
+        <input type="radio" name="mcdnaamt" id="mc-full" value="full"><label for="mc-full">完整金额<small>仅自己查看</small></label>
+      </div>
+      <button class="btn-primary" id="goMcdna" style="margin-top:16px">生 成 战 报</button>
+      <div class="hint">只读取你账户的官方订单。门派、身份、场景与全部数字由程序按订单判定；称号和评语默认取内置梗库，也可以让你的 Agent 按提示词重写（程序守门后才上卡）。没有或少量订单仍显示真实状态，不自动换演示；营养只展示已收录部分，不判断健康或身材。金额字段尚未用非空真实响应验证。</div>
+    </div>
+  </div>
+  <div>
+    <div id="mcdnaBox">
+      <div class="warn" id="mcdnaErr" style="display:none"></div>
+      <div class="deck">
+        <img id="mcdnaImg" alt="McDNA 战报正面" style="display:none">
+        <img id="mcdnaImgBack" alt="McDNA 战报背面" style="display:none">
+      </div>
+      <div id="mcdnaTools">
+        <button type="button" id="mcdnaPngFront">下载正面 PNG</button>
+        <button type="button" id="mcdnaPngBack">下载背面 PNG</button>
+        <a class="dl" id="mcdnaDl" download="mcdna-front.svg" style="display:none">正面 SVG</a>
+        <a class="dl" id="mcdnaDlBack" download="mcdna-back.svg" style="display:none">背面 SVG</a>
+      </div>
+      <div id="mcdnaMeta"></div>
+      <div class="notice" id="mcdnaWarn" style="display:none;margin-top:10px"></div>
+      <div class="warn" id="mcdnaExportErr" style="display:none;margin-top:8px;max-width:720px;font-size:12px"></div>
+      <details id="mcdnaAgent">
+        <summary>让 Agent 重写称号与评语（可选）</summary>
+        <div class="note" style="margin-top:6px">把下面的提示词交给你的 Agent（WorkBuddy 等），再把它返回的 JSON 粘贴回来。程序只替换文字槽位：数字、门派、场景不变；含编造数字、未点过的食品或越界评价会被拒绝。</div>
+        <textarea id="mcdnaPrompt" rows="6" readonly></textarea>
+        <div class="row"><button type="button" id="mcdnaCopy">复制提示词</button></div>
+        <textarea id="mcdnaReply" rows="5" placeholder='粘贴 Agent 返回的 {"snapshotId":…,"title":…,"verdict":…,"achievements":[…],"dialogue":…,"hook":…}'></textarea>
+        <div class="row"><button type="button" id="mcdnaSubmit">提交 Agent 文案</button></div>
+        <div class="warn" id="mcdnaAgentErr" style="display:none;margin-top:6px"></div>
+      </details>
+    </div>
+    <div class="empty" id="mcdnaEmpty">
+      <div class="empty-title">选好数据来源，生成你的麦门状态栏</div>
+      <div class="empty-body">点「生成战报」，「麦门状态栏」正反面会显示在这里，可分别下载 PNG。演示样本用内置订单，真实订单只读你账号里的近期订单。</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  数据来自麦当劳官方 MCP（mcp.mcd.cn），仅供参考，实际以门店收银为准。拼单仲裁仅输出决策清单与分账凭证，不代下单、不建立资金池、不托管他人账户权益。美团团单为本项目内置客户端独立查询（只读比价，无推广归因）。分享卡片不含手机号 / 姓名 / 门牌号等个人标识；Token 只保存在本机，不进入日志与分享。
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, p=document) => p.querySelector(s);
+// 品牌图缺失时回退到内置 SVG 吉祥物：打包漏件或直接打开文件也不会出现破图。
+(() => {
+  const img = document.querySelector('.brandmark img');
+  if (!img) return;
+  const fallback = () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '58'); svg.setAttribute('height', '58');
+    svg.innerHTML = '<use href="#mm-happy"/>';
+    img.replaceWith(svg);
+  };
+  if (img.complete && img.naturalWidth === 0) fallback();
+  else img.addEventListener('error', fallback, { once: true });
+})();
+const $$ = (s, p=document) => [...p.querySelectorAll(s)];
+let stores = [], storeCode = null, storeName = '';
+let latestRecipeDeals = [];
+let recipeMenuCombos = [];
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
+
+async function jget(url){ const r=await fetch(url); if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error||('HTTP '+r.status)); } return r.json(); }
+async function jpost(url, body){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); const d=await r.json().catch(()=>({})); if(!r.ok||d.error) throw new Error(d.error||('HTTP '+r.status)); return d; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// v1.4.6 R12：金额全链路按「分」保留，显示两位小数（只去掉无意义的尾零）。
+//   旧实现 toFixed(1)：2366 分显示 ¥23.7（丢 6 分），分账/复制清单同源出错。
+function fmtYuan(c){
+  const v = (Number(c)||0)/100;
+  return '¥' + v.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+function fmtYuanNum(v){ // 已是「元」的数值（团单价）
+  const n = Number(v);
+  return Number.isFinite(n) ? '¥' + n.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1') : '—';
+}
+
+// ---- 数值输入（缺陷修复：滚轮误触 + 输入/失焦/提交不一致） ----
+// 数字输入框统一用 type=text + inputmode=decimal：
+//   1. 文本输入不存在浏览器滚轮步进（旧 number 输入框聚焦时滚动页面会 ±1，如 1000→999）；
+//   2. inputmode=decimal 在移动端仍弹数字键盘；
+//   3. 输入/失焦/提交用同一套校验（parseNumField），非法值在失焦时按规则清洗并回写。
+function parseNumField(el, { required=true }={}){
+  const raw = String(el.value ?? '').trim().replace(/[，,]/g, '');
+  const min = el.dataset.min != null ? +el.dataset.min : -Infinity;
+  const max = el.dataset.max != null ? +el.dataset.max : Infinity;
+  const isInt = el.dataset.int === '1';
+  const isEmpty = raw === '';
+  const n = Number(raw);
+  const invalid = (!isEmpty && (!Number.isFinite(n) || n < min || n > max || (isInt && !Number.isInteger(n))))
+    || (isEmpty && required);
+  if (!isEmpty && Number.isFinite(n) && !invalid) {
+    // 失焦清洗回写（如 "600." → "600"、全角数字转半角后统一）
+    const clean = isInt ? String(Math.round(n)) : String(n);
+    if (clean !== el.value) el.value = clean;
+  }
+  return { value: n, empty: isEmpty, invalid, min, max };
+}
+function bindNumFields(root=document){
+  $$('.num', root).forEach(el=>{
+    if (el.dataset.numBound) return;
+    el.dataset.numBound = '1';
+    el.addEventListener('blur', ()=>{
+      const optional = !!el.placeholder; // 成员控卡/券/自持券实付为选填：空值合法
+      const r = parseNumField(el, { required: !optional });
+      if (r.invalid && !r.empty){
+        const label = el.closest('.inwrap')?.querySelector('.unit')?.textContent?.trim() || (el.dataset.int==='1'?'整数':'数值');
+        const tried = el.dataset.lastVal || el.value;
+        el.value = '';
+        toast(`「${label}」输入「${tried}」无效（合法范围 ${r.min}~${r.max}${el.dataset.int==='1'?'、整数':''}），已清空请重填`);
+      }
+    });
+    el.addEventListener('input', ()=>{ el.dataset.lastVal = el.value; });
+  });
+}
+bindNumFields();
+
+// ---- 模式切换 ----
+// UI-1/UI-2：一级入口聚焦点餐与战报；数据管理仅由次级入口进入。
+// 战报与数据管理隐藏门店选择，回到精算/拼单时按当前门店选择状态恢复。
+function setStorebarVisible(show){
+  const w=$('#storebarWrap'); if(w) w.style.display = show ? '' : 'none';
+}
+function setStorebarCollapsed(collapsed){
+  const sb=$('#storebar'); if(!sb) return;
+  sb.classList.toggle('collapsed', !!collapsed);
+  const t=$('#storeHintToggle'); if(t) t.textContent = collapsed ? '显示查询条件' : '收起查询条件';
+}
+function switchMode(mode){
+  ['solve','group','mcdna','recipes'].forEach(m=>{ const panel=$('#mode-'+m); if(panel) panel.style.display = m===mode?'':'none'; });
+  $$('#tabs .tab').forEach(t=>t.classList.toggle('active', t.dataset.mode===mode));
+  $('#openDataManagement').classList.toggle('active', mode==='recipes');
+  setStorebarVisible(mode==='solve' || mode==='group');
+}
+$$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>switchMode(t.dataset.mode)));
+$('#openDataManagement').addEventListener('click',()=>switchMode('recipes'));
+$('#storeHintToggle').addEventListener('click',()=>{ setStorebarCollapsed(!$('#storebar').classList.contains('collapsed')); });
+$('#storeSelLine').addEventListener('click',e=>{ if(e.target.closest('[data-store-expand]')) setStorebarCollapsed(false); });
+
+// ---- 首次配置引导（无 Token 也能打开面板；业务 API 返回 needSetup 时自动弹出） ----
+let setupDismissed = false; // 用户点「先浏览基础功能」后本轮不再自动弹出
+function setupMsg(sel, cls, text){ const el=$(sel); el.className='setup-msg '+(cls||''); el.textContent=text||''; }
+async function refreshSetupStatus(){
+  try {
+    const s = await jget('/api/setup/status');
+    updateTokenPill(s);
+    if (!s.tokenConfigured){
+      $('#setDot').className='statusdot err';
+      $('#setTokenInfo').textContent='未配置——实时配餐不可用';
+    } else {
+      $('#setDot').className='statusdot ok';
+      $('#setTokenInfo').textContent=`已配置（来源：${s.tokenSource==='env'?'环境变量':'本地数据目录'}）${s.tokenMasked?' · '+s.tokenMasked:''}`;
+    }
+    return s;
+  } catch { return null; }
+}
+function updateTokenPill(s){
+  const p=$('#tokenPill');
+  if (!s){ p.textContent='连接状态未知'; return; }
+  p.innerHTML = s.tokenConfigured ? '<span class="statusdot ok"></span>Token 已配置' : '<span class="statusdot err"></span>未配置 Token';
+}
+function showSetup(){ $('#setupOverlay').classList.add('show'); $('#tokenInput').focus(); }
+function hideSetup(){ $('#setupOverlay').classList.remove('show'); }
+$('#skipSetup').addEventListener('click',()=>{ setupDismissed=true; hideSetup(); toast('已跳过：实时配餐需要 Token，可随时点击顶部「未配置 Token」完成配置'); });
+$('#refreshSetupBtn').addEventListener('click',async()=>{ const s=await refreshSetupStatus(); if (s?.tokenConfigured){ hideSetup(); toast('检测到已配置的 Token，面板已就绪'); } else setupMsg('#setupMsg','info','仍未检测到本地保存的 Token；如已在其他窗口保存，点击「重新检查」'); });
+$('#eyeBtn').addEventListener('click',()=>{ const i=$('#tokenInput'); i.type = i.type==='password'?'text':'password'; });
+function bindTokenFlow(inputSel, btnSel, msgSel, onOk){
+  const btn=$(btnSel), input=$(inputSel);
+  input.addEventListener('input',()=>{ btn.disabled = input.value.trim().length<8; setupMsg(msgSel,'','',); });
+  btn.addEventListener('click',async()=>{
+    const token=input.value.trim();
+    if (token.length<8){ setupMsg(msgSel,'err','Token 格式无效（至少 8 个字符）'); return; }
+    btn.disabled=true; btn.textContent='验证中（只读时间接口）…';
+    setupMsg(msgSel,'info','正在验证连接…');
+    try {
+      const r = await jpost('/api/setup/token',{token});
+      if (r.ok){ setupMsg(msgSel,'ok',r.message); input.value=''; btn.disabled=true; await refreshSetupStatus(); if(onOk) onOk(); setTimeout(hideSetup,1200); }
+      else setupMsg(msgSel,'err',(r.message||'验证失败')+(r.hint?`（${r.hint}）`:''));
+    } catch(e){ setupMsg(msgSel,'err','验证请求失败：'+e.message); }
+    finally { btn.disabled=false; btn.textContent='验证并保存'; }
+  });
+}
+bindTokenFlow('#tokenInput','#verifyBtn','#setupMsg',()=>{ setupDismissed=false; loadStores(); });
+// 设置面板
+$('#tokenPill').addEventListener('click',async()=>{ await refreshSetupStatus(); $('#settingsOverlay').classList.add('show'); });
+$('#setCloseBtn').addEventListener('click',()=>$('#settingsOverlay').classList.remove('show'));
+$('#setEyeBtn').addEventListener('click',()=>{ const i=$('#setTokenInput'); i.type = i.type==='password'?'text':'password'; });
+$('#setChangeBtn').addEventListener('click',()=>{ const b=$('#setChangeBox'); b.style.display = b.style.display==='none'?'block':'none'; });
+$('#setVerifyBtn').addEventListener('click',async()=>{
+  const btn=$('#setVerifyBtn'); btn.disabled=true; setupMsg('#setMsg','info','验证中（只读时间接口，不读取订单/地址）…');
+  try {
+    const r = await jpost('/api/setup/verify');
+    setupMsg('#setMsg', r.ok?'ok':'err', r.message || (r.ok?'连接正常':'验证未通过'));
+    await refreshSetupStatus();
+  } catch(e){ setupMsg('#setMsg','err','请求失败：'+e.message); }
+  finally { btn.disabled=false; }
+});
+$('#setSaveBtn').addEventListener('click',async()=>{
+  const token=$('#setTokenInput').value.trim();
+  if (token.length<8){ setupMsg('#setMsg','err','Token 格式无效（至少 8 个字符）'); return; }
+  const btn=$('#setSaveBtn'); btn.disabled=true; setupMsg('#setMsg','info','验证并保存中…');
+  try {
+    const r = await jpost('/api/setup/token',{token});
+    if (r.ok){ setupMsg('#setMsg','ok',r.message); $('#setTokenInput').value=''; $('#setChangeBox').style.display='none'; await refreshSetupStatus(); loadStores(); }
+    else setupMsg('#setMsg','err',(r.message||'验证失败')+(r.hint?`（${r.hint}）`:''));
+  } catch(e){ setupMsg('#setMsg','err','请求失败：'+e.message); }
+  finally { btn.disabled=false; }
+});
+$('#setClearBtn').addEventListener('click',async()=>{
+  if (!confirm('确定清除本地保存的 Token？清除后实时配餐不可用，可随时重新配置。')) return;
+  try {
+    const r = await fetch('/api/setup/token',{method:'DELETE'}).then(x=>x.json());
+    setupMsg('#setMsg', r.ok?'ok':'err', (r.message||'')+(r.warn?`（${r.warn}）`:''));
+    await refreshSetupStatus();
+  } catch(e){ setupMsg('#setMsg','err','请求失败：'+e.message); }
+});
+// 启动时检查：未配置 → 自动弹引导（可跳过）
+refreshSetupStatus().then(s=>{ if (s && !s.tokenConfigured) showSetup(); });
+// 业务 API needSetup 拦截：包裹 jget/jpost
+const _origJpost = jpost;
+jpost = async function(url, body){
+  const d = await _origJpost(url, body);
+  if (d && d.needSetup && !setupDismissed){ showSetup(); throw new Error(d.message || '请先完成 Token 配置'); }
+  return d;
+};
+const _origJget = jget;
+jget = async function(url){
+  const d = await _origJget(url);
+  if (d && d.needSetup && !setupDismissed){ showSetup(); throw new Error(d.message || '请先完成 Token 配置'); }
+  return d;
+};
+
+// ---- 版本徽标（R12）：从 /api/health 读取 version，失败显示「版本未知」，不再硬编码 ----
+// 同一份版本号也写进「连接设置」：窄屏顶栏换行后胶囊仍在，但设置里始终能看到完整口径。
+(async function loadVersion(){
+  const el = $('#verPill'); if (!el) return;
+  try {
+    const h = await jget('/api/health');
+    el.textContent = (h && h.version) ? ('v'+String(h.version)) : '版本未知';
+  } catch { el.textContent = '版本未知'; }
+  const sv = $('#setVersion'); if (sv) sv.textContent = '面板版本 ' + el.textContent + '（与安装包 package.json 同源）。';
+})();
+
+// ---- 城市与门店 ----
+async function initCities(){
+  try {
+    const { cities } = await jget('/api/cities');
+    const saved = localStorage.getItem('mm-city');
+    $('#citySel').innerHTML = cities.map(c=>`<option>${esc(c)}</option>`).join('');
+    $('#citySel').value = (saved && cities.includes(saved)) ? saved : (cities.includes('上海') ? '上海' : (cities[0]||''));
+  } catch { $('#citySel').innerHTML = '<option>上海</option>'; }
+}
+// R10：门店查询竞态防护——请求序号只接受最新「城市 + 关键词」查询的结果；
+// 新查询立即清空旧选择并禁用依赖门店的提交按钮；提交前校验门店属于当前查询上下文。
+let storeQuerySeq = 0;   // 递增序号：过期响应直接丢弃
+let storeCtx = null;     // 最近一次成功查询的 { city, keyword }
+function currentStoreQuery(){ const city=$('#citySel').value, kw=$('#kwInput').value.trim(); return { city, keyword: kw||city }; }
+function storeMatchesContext(){ if (!storeCode || !storeCtx) return false; const cur=currentStoreQuery(); return storeCtx.city===cur.city && storeCtx.keyword===cur.keyword; }
+function clearStoreSelection(){ stores=[]; storeCode=null; storeName=''; $$('.sbar-item').forEach(x=>x.classList.remove('sel')); }
+function updateStoreSubmitState(){ const ready = storeMatchesContext(); $$('#go, #goGroup').forEach(b=>{ b.disabled = !ready; }); return ready; }
+// UI-2：收起查询条件后，用一行文字保留「当前门店」这一关键信息
+function updateStoreSelLine(){
+  const el=$('#storeSelLine'); if(!el) return;
+  el.innerHTML = storeCode
+    ? `<span>当前门店：<b>${esc(storeName||storeCode)}</b>（${esc($('#citySel').value||'—')}）</span><button class="btn-ghost" type="button" data-store-expand>更换门店</button>`
+    : '';
+}
+function ensureStoreSelected(){
+  if (!storeCode){ toast('请先查询并选择门店'); return false; }
+  if (!storeMatchesContext()){ clearStoreSelection(); storeCtx=null; updateStoreSubmitState(); toast('门店与当前查询条件已不一致，已清空，请重新查询并选择门店'); return false; }
+  return true;
+}
+async function loadStores(){
+  const seq = ++storeQuerySeq;                       // 本次查询的序号
+  const city = $('#citySel').value, kw = $('#kwInput').value.trim();
+  const ctx = { city, keyword: kw||city };
+  const box = $('#storeList');
+  clearStoreSelection();                             // 新查询：立即清空旧选择
+  storeCtx = null;
+  updateStoreSubmitState();                          // 并禁用依赖门店的提交按钮
+  box.innerHTML = '<div class="note" style="padding:4px">查询门店中…</div>';
+  if (!city){ box.innerHTML = '<div class="note" style="padding:4px">请先选择城市</div>'; return; }
+  try {
+    const data = await jget(`/api/stores?city=${encodeURIComponent(city)}&keyword=${encodeURIComponent(ctx.keyword)}`);
+    if (seq !== storeQuerySeq) return;               // 过期响应（已有更新的查询发起）→ 丢弃
+    stores = data.stores || [];
+    if (!stores.length){ box.innerHTML = '<div class="note" style="padding:4px">该城市未查到门店，试试更换地标关键词</div>'; storeCode=null; return; }
+    box.innerHTML = stores.map((s)=>`
+      <div class="sbar-item ${s.open?'':'closed-store'}" data-code="${esc(s.storeCode)}" data-name="${esc(s.storeName)}" title="${esc(s.storeName)}｜${esc(s.address)}">
+        <span class="sname">${esc(s.storeName)}</span>
+        <span class="saddr" title="${esc(s.address)}">${esc(s.address)}</span>
+        <span class="smeta"><span>${s.distance!=null? s.distance+'m':''}</span><span>${s.open?'营业中':'未营业'}</span></span>
+      </div>`).join('');
+    $$('.sbar-item', box).forEach(el=>el.addEventListener('click',()=>{
+      if (seq !== storeQuerySeq) return;             // 列表已被更新的查询替换
+      $$('.sbar-item',box).forEach(x=>x.classList.remove('sel'));
+      el.classList.add('sel'); storeCode = el.dataset.code; storeName = el.dataset.name;
+      updateStoreSubmitState();
+      updateStoreSelLine(); setStorebarCollapsed(true);   // UI-2：选中后收起查询条件
+      toast('已选门店：'+storeName);
+    }));
+    const firstOpen = stores.find(s=>s.open) || stores[0];
+    const firstEl = $$('.sbar-item',box).find(e=>e.dataset.code===firstOpen.storeCode);
+    if (firstEl){ firstEl.classList.add('sel'); storeCode = firstOpen.storeCode; storeName = firstOpen.storeName; }
+    storeCtx = ctx;                                  // 记录本次成功查询的上下文
+    updateStoreSubmitState();                        // 有有效选择 → 解禁提交按钮
+    updateStoreSelLine(); setStorebarCollapsed(true); // UI-2：有选择后收起细节，仅留门店行 + 列表
+    prewarm();
+  } catch(e){
+    if (seq !== storeQuerySeq) return;
+    storeCode=null; storeCtx=null; updateStoreSubmitState();
+    box.innerHTML = `<div class="note" style="padding:4px">门店查询失败：${esc(e.message)}<br>可稍后重试，或先在下方各功能中使用手动输入。</div>`;
+  }
+}
+async function prewarm(){
+  if (!storeCode) return;
+  try {
+    await fetch('/api/prewarm',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({city:$('#citySel').value, keyword:$('#kwInput').value.trim()||$('#citySel').value, storeCode})});
+  } catch {}
+}
+
+// 页面启动：先初始化城市下拉（后端 36 城），恢复上次选择，再自动查询门店；任何失败都结束加载态
+$('#citySel').addEventListener('change', ()=>{ localStorage.setItem('mm-city', $('#citySel').value); loadStores(); });
+$('#kwInput').addEventListener('input', ()=>{
+  // 换关键词：当前选择已不再对应当前查询条件 → 立即清空并要求重新查询
+  if (storeCode || stores.length){ clearStoreSelection(); storeCtx=null; updateStoreSubmitState(); $('#storeList').innerHTML='<div class="note" style="padding:4px">关键词已修改，请点击「查询门店」重新查询</div>'; }
+});
+$('#findBtn').addEventListener('click', ()=>{ loadStores(); });
+$('#locBtn').addEventListener('click', ()=>{
+  if (!navigator.geolocation){ toast('浏览器不支持定位，请手动选择城市与门店'); return; }
+  $('#locBtn').disabled = true;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try {
+      const { city, distanceKm } = await jget(`/api/nearest-city?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
+      if ([...$('#citySel').options].some(o=>o.textContent===city)) { $('#citySel').value = city; }
+      localStorage.setItem('mm-city', city);
+      await loadStores();
+      toast(`已定位到最近城市：${city}（约 ${distanceKm} km），已自动查询门店，可点击更换`);
+    } catch(e){ toast('定位匹配失败：'+e.message+'，可在上方手动选择城市'); }
+    finally { $('#locBtn').disabled = false; }
+  }, err=>{
+    $('#locBtn').disabled=false;
+    const reason = err.code===1 ? '定位权限被拒绝：可在浏览器地址栏允许位置权限，或直接在上方下拉选择城市'
+      : err.code===2 ? '位置信息不可用：请直接在上方下拉选择城市并查询门店'
+      : '定位超时：请重试或直接在上方下拉选择城市';
+    toast(reason);
+  }, { timeout:8000 });
+});
+(async function boot(){
+  await initCities();
+  await loadStores(); // 成功渲染门店；失败显示失败原因——加载态必然结束
+})();
+
+// ---- 优化目标（营养优先层，预算贴合固定为前两级） ----
+let objOrder = [];
+function refreshPri(){
+  $$('#objSeg input').forEach(box=>{
+    const tag = document.querySelector(`label[for="${box.id}"] small[data-pri]`);
+    if (tag) { const i = objOrder.indexOf(box.value); tag.textContent = i>=0 ? `优先 ${i+1}` : ''; }
+  });
+}
+$$('#objSeg input').forEach(cb=>cb.addEventListener('change',()=>{
+  const v = cb.value;
+  if (cb.checked) { if (!objOrder.includes(v)) objOrder.push(v); }
+  else objOrder = objOrder.filter(x=>x!==v);
+  if (objOrder.length>2){ objOrder.pop(); cb.checked = objOrder.includes(v); toast('营养目标最多选 2 个'); }
+  refreshPri();
+}));
+refreshPri();
+function collectObjectives(){
+  const ordered = objOrder.filter(v=>{ const el=$(`#o-${v}`); return el && el.checked; });
+  const rest = $$('#objSeg input:checked').map(cb=>cb.value).filter(v=>!ordered.includes(v));
+  return [...ordered, ...rest].slice(0,2); // 营养目标 ≤2；kcal-fill/price-fill 由服务端固定前缀
+}
+function collectStaple(){
+  const v = document.querySelector('input[name="stapleN"]:checked')?.value || '0';
+  return +v > 0 ? [{ metric:'staple', op:'>=', value:+v }] : [];
+}
+
+// ---- 精算模式 ----
+function collectConstraints(){
+  const out=[];
+  $$('.crow').forEach(row=>{
+    const metric=$('[data-metric]',row).dataset.metric, v=$('[data-metric]',row).value, op=$('[data-op]',row).value;
+    if (v!=='' && Number.isFinite(+v)) out.push({metric, op: op==='≥'?'>=':'<=', value:+v});
+  });
+  return out;
+}
+
+// ---- 统一阶段进度（不定进度条 + 已耗时 + 后端真实上报的阶段链 + 取消） ----
+const ALL_STAGES = ['准备菜单', '解析团购', '优化组合', '核验价格', '生成方案'];
+// R14：不再用跨页面共享的单例任务；任务状态挂到「自己的容器 + 自己的卡片」上，
+// 由自增令牌判定「本次轮询是否已被后来的任务取代」，避免单人/多人任务互相取消或互相改写。
+let jobSeq = 0;
+
+function progressCardHtml(container){
+  container.innerHTML = `<div class="progress-card">
+    <div class="p-head">
+      <span class="p-stage">准备中…</span>
+      <span class="p-elapsed">已耗时 0.0s</span>
+      <button class="p-cancel">✕ 取消</button>
+    </div>
+    <div class="p-track"><div class="p-indet"></div></div>
+    <div class="p-stages">${ALL_STAGES.map(s=>`<span class="p-chip" data-stage="${s}">${s}</span>`).join('')}</div>
+    <div class="p-note"></div>
+  </div>`;
+  const card = container.querySelector('.progress-card');
+  card.__jobId = null;      // 创建时尚未拿到后端 jobId，由 runJob 回填
+  card.__cancelled = false;
+  const cancelBtn = card.querySelector('.p-cancel');
+  cancelBtn.onclick = async ()=>{
+    // 闭包只认这张卡片自己的 jobId（POST 返回值），绝不读跨页面单例
+    const jobId = card.__jobId;
+    if (!jobId || card.__cancelled) return;
+    card.__cancelled = true;
+    cancelBtn.disabled = true; cancelBtn.textContent = '取消中…';
+    try { await fetch(`/api/jobs/${jobId}/cancel`, { method:'POST' }); } catch {}
+  };
+  return card;
+}
+function renderProgress(card, st){
+  const stageEl = card.querySelector('.p-stage');
+  const chips = $$('.p-chip', card);
+  const idx = st.stages ? st.stages.length - 1 : -1;
+  stageEl.textContent = st.stage || '准备中…';
+  chips.forEach((c)=>{
+    const i = st.stages ? st.stages.indexOf(c.dataset.stage) : -1;
+    c.classList.toggle('done', i >= 0 && i < idx);
+    c.classList.toggle('cur', i === idx);
+  });
+  card.querySelector('.p-elapsed').textContent = `已耗时 ${(st.elapsedMs/1000).toFixed(1)}s`;
+  card.querySelector('.p-note').textContent = st.note || '';
+}
+function startElapsedTicker(card){
+  const t0 = Date.now();
+  const el = card.querySelector('.p-elapsed');
+  return setInterval(()=>{ el.textContent = `已耗时 ${((Date.now()-t0)/1000).toFixed(1)}s`; }, 100);
+}
+async function runJob(endpoint, body, container, fallbackSync){
+  // 优先走异步任务（阶段上报+取消）；后端不支持时回退同步调用
+  const card = progressCardHtml(container);
+  const noteEl = card.querySelector('.p-note');
+  const myToken = ++jobSeq;            // R14：本次请求独占令牌
+  container.__jobToken = myToken;      // 挂到自己的容器上，后启动的任务会覆盖它
+  const stillMine = ()=> container.__jobToken === myToken;  // 自己是否仍持有该容器
+  let started = false;
+  try {
+    const r = await jpost(endpoint, body);
+    if (!r.jobId) return stillMine() ? fallbackSync() : null;
+    if (!stillMine()) return null;     // 已被后来的任务取代：不接管容器
+    started = true;
+    card.__jobId = r.jobId;            // 取消按钮只认这张卡自己的 jobId
+    const ticker = startElapsedTicker(card);
+    let warned = false;
+    for (let i = 0; i < 900; i++){   // 上限 6 分钟
+      await new Promise(res=>setTimeout(res, 400));
+      if (!stillMine()){ clearInterval(ticker); return null; }   // 被取代：停止轮询且不改写他人卡片
+      let st;
+      try { st = await jget(`/api/jobs/${r.jobId}`); }
+      catch { continue; }
+      if (!stillMine()){ clearInterval(ticker); return null; }
+      renderProgress(card, st);
+      if (st.elapsedMs > 45000 && !warned){ warned = true; noteEl.innerHTML = '比平时慢——可能是门店数据源或渠道接口响应慢；可继续等待或取消后重试。'; }
+      if (st.cancelled && !st.done){
+        clearInterval(ticker);
+        container.innerHTML = '<div class="note" style="padding:6px 2px">已取消本次求解，输入内容已保留，可调整后重试。</div>';
+        return null;
+      }
+      if (st.done){
+        clearInterval(ticker);
+        if (st.error){
+          if (st.code === 'E_CANCELLED') { container.innerHTML = '<div class="note" style="padding:6px 2px">已取消本次求解，输入内容已保留。</div>'; return null; }
+          container.innerHTML = `<div class="warn">${esc(st.error)}${st.code?`<br><span style="font-size:11px">错误码 ${esc(st.code)}</span>`:''}</div>`;
+          return null;
+        }
+        return st.result;
+      }
+    }
+    clearInterval(ticker);
+    container.innerHTML = '<div class="warn">等待超时（6 分钟）：请检查网络后重试，或稍后再试。</div>';
+    return null;
+  } catch(e){
+    if (!started) return stillMine() ? fallbackSync() : null;  // 异步端点不可用 → 同步兜底（仅在仍持有容器时）
+    if (!stillMine()) return null;
+    container.innerHTML = `<div class="warn">请求失败：${esc(e.message)}</div>`;
+    return null;
+  }
+}
+
+$('#go').addEventListener('click', async ()=>{
+  const kf = parseNumField($('#kcal')), yf = parseNumField($('#yuan'));
+  for (const f of [kf, yf]){
+    if (f.invalid || (f.empty)){ toast(f.empty ? '请填写热量目标与价格预算' : `输入超出合法范围（${f.min}~${f.max}），请修正后重试`); (f.empty||f.invalid ? $('#kcal') : $('#yuan')).focus(); return; }
+  }
+  for (const row of $$('.crow')){
+    const inp = $('[data-metric]', row);
+    if (!inp.value.trim()) continue;
+    const cf = parseNumField(inp, { required: false });
+    if (cf.invalid){ toast('自定义营养约束含非法数值，请修正后重试'); inp.focus(); return; }
+  }
+  const kcal=kf.value, yuan=yf.value;
+  if (!ensureStoreSelected()) return; // R10：提交前校验门店属于当前查询上下文
+  const btn=$('#go'); btn.disabled=true;
+  const runSync = async ()=>{
+    $('#results').innerHTML = `<div class="skel"><div class="l" style="width:30%"></div><div class="l" style="width:80%"></div><div class="l" style="width:60%"></div></div><div class="skel"><div class="l" style="width:40%"></div><div class="l" style="width:70%"></div></div>`;
+    $('#status').style.display='none';
+    try {
+      return await jpost('/api/solve', {
+        kcal, yuan,
+        objective: collectObjectives()[0],
+        objectives: collectObjectives(),
+        constraints:collectConstraints().concat(collectStaple()),
+        city:$('#citySel').value, keyword:$('#kwInput').value.trim()||$('#citySel').value,
+        storeCode: storeCode||undefined, storeName: storeCode? storeName: undefined,
+        targetTime: ($('#targetTime').value||'').trim()||undefined,
+      });
+    } catch(e){ $('#results').innerHTML = `<div class="warn">请求失败：${esc(e.message)}</div>`; return null; }
+    finally { btn.disabled=false; btn.textContent='开 始 精 算'; }
+  };
+  const d = await runJob('/api/jobs/solve', {
+    kcal, yuan,
+    objective: collectObjectives()[0],
+    objectives: collectObjectives(),
+    constraints:collectConstraints().concat(collectStaple()),
+    city:$('#citySel').value, keyword:$('#kwInput').value.trim()||$('#citySel').value,
+    storeCode: storeCode||undefined, storeName: storeCode? storeName: undefined,
+    targetTime: ($('#targetTime').value||'').trim()||undefined,
+  }, $('#results'), runSync);
+  btn.disabled=false; btn.textContent='开 始 精 算';
+  if (!d) return;
+  try {
+    renderStatus(d);
+    // v1.4.6 R10：渠道诊断/候选榜/技术统计一律写入「高级数据管理 → 查询与候选诊断」
+    if (d.channelDiagnostics) setDataDiagnostics({ title:'双预算精算', diag:d.channelDiagnostics, chips:diagnosticsChipsOf(d), ...(d.menuAudit ? { menuAudit:d.menuAudit } : {}) });
+    if (!d.feasible){
+      $('#results').innerHTML = `<div class="warn"><b>无可行方案</b><br>${esc(d.reason||'')}</div>`;
+      return;
+    }
+    const sfNote = d.solutions.some(x=>x.singleFallback) ? '<div class="warn" style="margin-bottom:10px">⚠️ 当前时段套餐组合无法满足约束，已按你的设置放宽加入单点补齐（已标注），可关闭该项查看纯套餐方案。</div>' : '';
+    // v1.2：同一套餐的选配变体（如果汁/牛奶）合并为一张卡，按「购买组合」去重展示
+    // v1.4.6 R02：分组键改为食品内容——不同渠道的同内容方案合并为一张卡，渠道作为购买途径列出
+    const groups = groupByBasket(d.solutions);
+    const shown = groups.slice(0, 5);
+    const countNote = `<div class="note" style="margin:0 0 8px">购买组合共 ${groups.length} 组${groups.length>5?'，按推荐顺序展示前 5 组':''}；同一食品组合的不同渠道/选配已收进同组卡片。</div>`;
+    $('#results').innerHTML = sfNote + countNote + shown.map((g,i)=>renderSol(g[0], i, g)).join('');
+  } catch(e){ $('#results').innerHTML = `<div class="warn">渲染失败：${esc(e.message)}</div>`; }
+});
+
+// 快捷热量档按钮点击处理
+document.querySelectorAll('.btn-kcal').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kcal = btn.getAttribute('data-kcal');
+    $('#kcal').value = kcal;
+    // 自动推荐预算：500kcal→30元，750kcal→50元，1000kcal→70元
+    const yuanMap = { '500': '30', '750': '50', '1000': '70' };
+    if (yuanMap[kcal]) $('#yuan').value = yuanMap[kcal];
+  });
+});
+
+const PRICE_SOURCE_LABEL = {
+  'calculate-price': '已核价（计价接口）',
+  'model-optimal': '模型估价（结算以下单页为准）',
+  'snapshot': '历史快照参考价（最后观测价）',
+  'mixed': '券参考价 + 官方核价',
+};
+
+// v1.4.6 R02 / v1.4.7 R02-R03：分组键 = 「吃什么」——食品身份 + 规格 + 数量。
+//   旧键用显示名（券方案即券 planId）→ 同一份「麦香鸡＋香芋派」从实时券/知识库券各占一张卡；
+//   而同名不同规格（中/大可樂）又会被名称合并。现在与内核共用同一身份口径：
+//     有 option code 以 code 为准（同 code 别名归同一身份，不同 code 的同名规格保持不同）；
+//     没有 code 时用「归一化名称 + 规格」，绝不用热量近似规格。
+// v1.4.10 W10/W11：身份键必须带规格——同一父 SKU（如 9900008751）下小/中/大杯是同 code 不同规格，
+//   旧实现「有 code 就 return」把大杯与中杯合并成同一身份，分组与数量都会串。
+function foodIdentityKey(c){
+  const code=String(c&&(c.chosenCode||c.optionCode||c.code)||'').trim();
+  const name=String(c&&(c.chosenName||c.defaultName||c.name)||'').replace(/\s+/g,'').toLowerCase();
+  const spec=String(c&&(c.specLabel||c.spec)||'').replace(/\s+/g,'').toLowerCase();
+  if(code) return 'c:'+code+(spec?'@'+spec:'');
+  return 'n:'+name+(spec?'@'+spec:'');
+}
+// v1.4.10 W10：按**逐食品**多重集展开（旧实现把一份餐的所有组件 join('+') 当成一个身份，
+//   于是「A＋B＋C」与「A＋B」不共享组件、同一份食品在套餐/散点里各算一份，分组与份数都会偏）。
+function foodUnitsOf(it){
+  if (Array.isArray(it.units) && it.units.length){
+    const out=[];
+    for (const u of it.units){
+      const keys=(u.config||[]).filter(c=>!c.nonFood).map(foodIdentityKey).filter(k=>k!=='n:'&&k!=='c:');
+      if(keys.length) out.push(...keys);
+      else out.push('n:'+String(it.name||'').toLowerCase());
+    }
+    return out;
+  }
+  const keys=(it.foods||it.deconstruction||[]).filter(r=>!r.nonFood).map(foodIdentityKey).filter(k=>k!=='n:'&&k!=='c:');
+  if(keys.length) return keys;
+  return Array.from({length:Math.max(1,it.qty||1)},()=>'n:'+String(it.name||'').toLowerCase());
+}
+// v1.4.10 W11：规格展示——后端 foods[].spec 已带规格，但品名未必含规格（同 code 小/中/大杯）。
+//   只把「品名里没写出来的规格」补出来，避免出现「大薯条（大）」这种重复。
+function basketSpecText(b){
+  const foods = Array.isArray(b && b.foods) ? b.foods.filter(f=>f && f.name && !f.nonFood) : [];
+  const need = foods.filter(f=>f.spec && !String(f.name).includes(String(f.spec)));
+  if (!need.length) return '';
+  return [...new Set(need.map(f=>`${f.name}（${f.spec}）`))].join('、');
+}
+function basketKeyOf(s){  // 数量聚合：同身份累加份数（同一食品拆成套餐/散点也得到同一签名）
+  const counts=new Map();
+  for(const k of (s.items||[]).flatMap(foodUnitsOf)) counts.set(k,(counts.get(k)||0)+1);
+  if(!counts.size) return 'empty';
+  return [...counts.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,n])=>k+'×'+n).join('|');
+}
+function groupByBasket(solutions){
+  const map = new Map();
+  for (const s of solutions){
+    const k = basketKeyOf(s);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(s);
+  }
+  return [...map.values()];
+}
+function variantDesc(v){
+  const items = v.items.map(it=>{
+    const cfg = (it.deconstruction||[]).map(r=>r.defaultName).filter(Boolean).join('＋');
+    return `${it.name}${it.qty>1?'×'+it.qty:''}${cfg?`（${cfg}）`:''}`;
+  }).join(' + ');
+  const cat = [...new Set(v.items.map(i=>i.category).filter(Boolean))].join(' / ');
+  const src = PRICE_SOURCE_LABEL[v.priceSource] || v.priceNote || '';
+  return `${items}${cat?` · ${cat}`:''}${src?` · ${src}`:''}`;
+}
+
+// 美团团单独立列表（单人页）：查询数量 / 入池数量 / 未核验原因细分（早期版本），技术口径折叠
+// v1.4：默认显示「原因汇总」，完整清单折叠并提供搜索（与排除明细去重，只列一份）
+const DEAL_REASON_LABEL = { 'detail-unavailable':'详情未取得', 'spec-unmappable':'规格无法匹配', 'choice-range-unclear':'任选范围不明确', 'name-mismatch':'无同名官方套餐' };
+function dealReasonSummary(deals){
+  const m = new Map();
+  for(const d of deals){
+    // v1.4.1：三状态口径（可自动比价 / 价格候选 / 不可购买），旧数据（无 status）按 verified 兼容
+    const k = d.status === 'unavailable' ? '不可购买'
+      : (d.verified || d.status === 'admitted') ? '可参与求解'
+      : (DEAL_REASON_LABEL[d.reasonCode] || '价格候选（未核验）');
+    m.set(k,(m.get(k)||0)+1);
+  }
+  return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join(' · ');
+}
+function dealListHtml(deals, listId){
+  if(!deals.length) return '<div style="margin-top:4px">本次未返回团单列表</div>';
+  const rows = deals.map((x,index)=>{
+    const reason = x.note || (x.verified ? '可参与求解' : '未核验');
+    return `<li class="dealrow" data-k="${esc((x.name+' '+(x.reasonCode?DEAL_REASON_LABEL[x.reasonCode]||'':reason)).toLowerCase())}"><span class="nm">${esc(x.name)} ${fmtYuanNum(x.priceYuan)}</span><span class="rs">${dealStatusBadge(x)} ${esc(reason)}${x.headUrl?` <a href="${esc(x.headUrl)}" target="_blank" rel="noopener">券面图</a>`:''}<button class="deal-source-btn" data-open-recipe-manager="${index}" type="button">规则/来源</button></span></li>`;
+  }).join('');
+  return `<div class="dealsearch"><input type="text" placeholder="搜索团单名 / 原因…" oninput="filterDeals(this,'${listId}')"><span class="cnt"></span></div><ul class="dealul" id="${listId}">${rows}</ul>`;
+}
+// v1.4.1「全部团购入池」：团单状态徽章（可自动比价 / 价格候选 / 不可购买）
+function dealStatusBadge(x){
+  const s = x.status || (x.verified ? 'admitted' : (x.purchasable === false ? 'unavailable' : 'price-candidate'));
+  if (s === 'admitted') return '<b style="color:var(--green)">✓可自动比价</b>';
+  if (s === 'price-candidate') return '<b style="color:#B26A00">¥价格候选</b>';
+  if (s === 'unavailable') return '<span style="color:var(--faint)">✕不可购买</span>';
+  return '';
+}
+// v1.4.1「全部团购入池」：价格候选榜——在售团单（核验+未核验）按券面价升序展示前 8 条，独立默认展开；
+// 未核验券只给价格与券面图，绝不猜测内容（自动比价/营养计算仅覆盖 ✓ 核验券）
+function unionPriceBoardHtml(deals){
+  const buyable = deals.filter(x => (x.status || (x.verified ? 'admitted' : 'price-candidate')) !== 'unavailable');
+  if (!buyable.length) return '';
+  const sorted = buyable.slice().sort((a,b)=>a.priceYuan-b.priceYuan);
+  const rows = sorted.slice(0, 8).map(x => {
+    const index=deals.indexOf(x);
+    return `<li class="dealrow"><span class="nm">${fmtYuanNum(x.priceYuan)} ${esc(x.name)}</span><span class="rs">${dealStatusBadge(x)}${x.headUrl?` <a href="${esc(x.headUrl)}" target="_blank" rel="noopener">券面图</a>`:''}<button class="deal-source-btn" data-open-recipe-manager="${index}" type="button">规则/来源</button></span></li>`;
+  }).join('');
+  return `<details open class="adv" style="margin-top:10px"><summary style="justify-content:flex-start; gap:8px"><span>🎫 美团团购价格候选榜（在售 ${buyable.length} 条 · ${fmtYuanNum(sorted[0].priceYuan)} 起）</span></summary><div style="font-size:11.5px; color:var(--muted); padding:0 12px 10px; line-height:1.7"><div style="margin-bottom:4px">全部在售团单均入池展示；<b style="color:#B26A00">¥价格候选</b> = 内容未核验，可按券面价直接购买（内容以券面图/下单页为准）；<b style="color:var(--green)">✓可自动比价</b> = 构成已核验，参与自动比价与营养计算。</div><ul class="dealul">${rows}</ul></div></details>`;
+}
+function openRecipeManagerForDeal(index){
+  const deal=latestRecipeDeals[Number(index)];
+  switchMode('recipes');
+  if(deal?.name){
+    $('#recipeSearch').value=deal.name;
+    $('#recipeRecords').closest('details').open=true;
+    loadRecipeRecords();
+    $('#recipeRecords').scrollIntoView({behavior:'smooth',block:'center'});
+    toast('已按券名筛选配方来源；若尚无记录，可在团单清单中人工核验');
+  }else{
+    $('#recipeFormPanel').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+document.addEventListener('click',e=>{
+  const target=e.target instanceof Element ? e.target.closest('[data-open-recipe-manager]') : null;
+  if(target) openRecipeManagerForDeal(target.dataset.openRecipeManager);
+});
+function filterDeals(input, listId){
+  const q = (input.value||'').trim().toLowerCase();
+  const ul = document.getElementById(listId); if(!ul) return;
+  let n = 0;
+  ul.querySelectorAll('.dealrow').forEach(li=>{ const hit = !q || (li.dataset.k||'').includes(q); li.style.display = hit?'':'none'; if(hit) n++; });
+  const c = input.parentElement && input.parentElement.querySelector('.cnt');
+  if(c) c.textContent = q ? `${n} / ${ul.children.length}` : '';
+}
+function meituanPanelHtml(diag){
+  const u = diag && diag.union;
+  if (!u) return '';
+  const st = u.stats;
+  const deals = u.deals || [];
+  const srcText = u.source === 'independent' ? '内置客户端直连联盟网关' : (u.dbUsed ? '本地团单库兜底（最近观测，非实时）' : '未查询（无凭据）');
+  const lines = [];
+  lines.push(`数据来源：${srcText}${u.degraded?'（本次接口降级）':''}${u.unavailableReason?`；原因：${esc(u.unavailableReason)}`:''}`);
+  // v1.4.10 W01：先讲「完整发现目录」，再讲「受控求解池」——两者不得混成一个数字
+  const dv = st && st.discovery;
+  if (dv) {
+    lines.push(`完整发现目录 <b>${dv.total}</b> 条（分页 ${dv.pages} 页，${dv.hasNext ? '上游仍有下一页' : '已取到目录末尾'}${dv.truncated ? `；<b style="color:var(--red)">已截断：${esc(dv.truncatedReason||'达客户端上限')}</b>` : '；未截断'}）`);
+    lines.push(`受控求解池 <b>${dv.poolSize}</b> 条（按券面价升序取前 ${dv.poolLimit} 条逐条核验）${dv.poolOverflow ? `；池外 <b>${dv.poolOverflow}</b> 条在售团单仍作为价格候选展示，逐条注明「未参与本次求解」` : ''}`);
+  }
+  if (st) lines.push(`接口查询 <b>${st.queried}</b> 条：可自动比价 <b>${st.admitted}</b>（券名↔官方套餐/单品核验 ${st.menuVerified||0}）；价格候选（在售可购买，内容未核验）<b>${st.priceCandidates ?? st.detailUnverified ?? 0}</b>；已停售 <b>${st.saleEnded}</b>；券有效期已过 <b>${st.validityExpired}</b>${st.other?`；其他 <b>${st.other}</b>`:''}`);
+  // v1.4.1：价格候选榜独立默认展开（全部在售团单入池展示），完整清单继续折叠可搜索
+  const priceBoard = unionPriceBoardHtml(deals);
+  // v1.4：默认原因汇总（不再逐条与排除明细重复）
+  if (deals.length) lines.push(`原因汇总：${esc(dealReasonSummary(deals))}`);
+  const listHtml = dealListHtml(deals, 'mtDealList');
+  return priceBoard + `<details class="adv" style="margin-top:10px"><summary style="cursor:pointer; font-size:12px; color:var(--muted)">美团团购查询详情（查询 ${deals.length} 条 · 可自动比价 ${st?st.admitted:(u.admitted||0)}）</summary><div style="font-size:11.5px; color:var(--muted); padding:6px 2px; line-height:1.7">${lines.join('<br>')}<details style="margin-top:6px"><summary style="cursor:pointer; font-size:11.5px; color:var(--faint)">完整团单清单（可搜索）</summary>${listHtml}</details></div></details>`;
+}
+
+function renderStatus(d){
+  const el=$('#status'); el.style.display='flex';
+  const om = d.officialMenu;
+  const menuChip = !om ? '' : om.status==='realtime'
+    ? '<span class="chip">菜单 <b>实时数据</b></span>'
+    : om.status==='snapshot'
+      ? `<span class="chip">菜单 <b>历史快照 ${esc((om.snapshotAt||'').slice(0,10))}</b></span>`
+      : '<span class="chip">官方菜单 <b>暂不可用</b></span>';
+  const firstPrice = (d.solutions||[])[0] && (d.solutions||[])[0].priceSource;
+  const priceChip = firstPrice ? `<span class="chip">价格来源 <b>${esc(PRICE_SOURCE_LABEL[firstPrice]||firstPrice)}</b></span>` : '';
+  const u = d.channelDiagnostics && d.channelDiagnostics.union;
+  if (u && Array.isArray(u.deals)) setRecipeDeals(u.deals, d.channelDiagnostics);
+  // v1.4.6 R10：候选池 / 建池统计 / 原始优化键不再出现在消费者结果页（统一移入高级数据管理）。
+  //   这里只保留用户可决策的信息：门店、菜单时效、价格口径、目标的白话说明。
+  // v1.4.9 N01：如实回显本轮口径（即时 / 预约到某时刻），避免「以为按 08:00 报价、实际按现在算」
+  const oc = d.orderContext;
+  const ctxChip = !oc ? ''
+    : oc.mode === 'scheduled'
+      ? `<span class="chip">用餐时间 <b>${esc(oc.reservationDate||'')}</b> ${esc(oc.periodLabel||'')}</span>`
+      : '<span class="chip">口径 <b>即时（当前时刻）</b></span>';
+  el.innerHTML = `<span class="chip">门店 <b>${esc(d.store.storeName)}</b></span>
+    ${menuChip}
+    ${ctxChip}
+    ${priceChip}
+    <span class="chip">你的目标 <b>接近 ${esc(String($('#kcal').value||''))} kcal · 预算 ${fmtYuanNum($('#yuan').value)} 内</b></span>`;
+}
+
+/** v1.4.6 R10：诊断信息（候选池/建池统计/渠道查询/价格候选榜）集中到高级数据管理面板 */
+function diagnosticsChipsOf(d){
+  const u = d.channelDiagnostics && d.channelDiagnostics.union;
+  const st = u && u.stats;
+  return [
+    `<span class="chip">预算内候选 <b>${d.scanned}</b></span>`,
+    d.comboCount?`<span class="chip">可用套餐 <b>${d.comboCount}</b></span>`:'',
+    d.unmatched?`<span class="chip" title="官方菜单中未联结到营养库的条目数（含套餐组件）">营养未联结条目 <b>${d.unmatched}</b></span>`:'',
+    `<span class="chip">候选池 <b>${d.poolTried}</b></span>`,
+    u?`<span class="chip">美团查询 <b>${st?st.queried:(u.queried||0)}</b> · 价格候选 <b>${st?(st.priceCandidates ?? st.detailUnverified ?? 0):0}</b> · 自动比价 <b>${st?st.admitted:(u.admitted||0)}</b></span>`:'',
+  ].filter(Boolean).join('');
+}
+let latestDiagnostics = null;
+function setDataDiagnostics(payload){
+  latestDiagnostics = payload;
+  const el = $('#dataDiagnostics'); if(!el) return;
+  const chips = payload.chips ? `<div class="statusline" style="margin-bottom:8px">${payload.chips}</div>` : '';
+  el.innerHTML = `<div style="font-weight:600;margin-bottom:6px">最近一次：${esc(payload.title)} · ${esc(new Date().toLocaleString())}</div>`
+    + chips
+    + (payload.diag ? meituanPanelHtml(payload.diag) : '<div class="note">本次未返回渠道诊断。</div>')
+    + menuAuditHtml(payload.menuAudit);
+}
+
+/** v1.4.9 N01：逐商品遗漏账（官方返回 → 结构 → 营养 → 候选 → 选中）。
+ *  只在这里展示：消费者结果页保持干净，排障时再展开。 */
+function menuAuditHtml(rows){
+  if (!Array.isArray(rows) || !rows.length) return '';
+  const label = (r) => {
+    const st = r.structure === 'ok' ? '结构完整' : r.structure === 'unknown' ? '结构未取得' : r.structure === 'single' ? '单点' : '未展开';
+    const nu = r.nutrition === 'matched' ? '营养已联结' : r.nutrition === 'estimated' ? '营养估算' : r.nutrition === 'unknown' ? '营养未知' : '营养不适用';
+    const tail = r.selected ? '已选中' : r.inPlans ? '入候选未选中' : '未入候选';
+    return `<li style="display:block">${esc(r.name)} <span class="ctag">${esc(r.code)}</span> · ${st} · ${nu} · ${tail}${r.reason ? ` · ${esc(r.reason)}` : ''}</li>`;
+  };
+  const selected = rows.filter((r) => r.selected).slice(0, 40).map(label).join('');
+  const rest = rows.filter((r) => !r.selected).slice(0, 120).map(label).join('');
+  return `<details style="margin-top:10px"><summary>逐商品遗漏账（${rows.length} 条 · 已选中 ${rows.filter((r) => r.selected).length}）</summary>
+    <div class="note" style="margin-top:6px">已进入方案的：</div><ul class="items">${selected || '<li style="display:block">（无）</li>'}</ul>
+    <div class="note" style="margin-top:6px">其余（含结构未取得、营养未知、未入候选的原因）：</div><ul class="items">${rest || '<li style="display:block">（无）</li>'}</ul>
+  </details>`;
+}
+
+/** v1.4.9 N01：分时段目录渲染（高级数据管理 · 只读） */
+function renderPeriodCatalog(d){
+  const el = $('#periodCatalogOut'); if (!el) return;
+  const c = d.catalog || {};
+  const chips = (c.queries || []).map((x) => `<span class="chip">${esc(x.anchor)} · ${x.period === 'breakfast' ? '早餐' : '常规'} <b>${x.ok ? `${x.itemCount} 条` : '查询失败'}</b></span>`).join('');
+  const pools = (d.pools || []).map((p) => `<li style="display:block"><b>${p.period === 'breakfast' ? '早餐' : '常规时段'}</b>：可售 ${p.count} 条 · 剔除 ${p.excluded} 条${p.failedQueries ? '（该时段官方查询失败，按无法确认处理）' : ''}</li>`).join('');
+  const sellable = (d.ledger || []).filter((r) => r.sellable);
+  const rows = sellable.slice(0, 200).map((r) => {
+    const st = r.structure === 'ok' ? '结构完整' : r.structure === 'unknown' ? '结构未取得' : r.structure === 'single' ? '单点' : '未展开';
+    return `<li style="display:block">${esc(r.name)} <span class="ctag">${esc(r.code)}</span> · ${st}${r.priceCents != null ? ` · ¥${(r.priceCents / 100).toFixed(2)}` : ''}</li>`;
+  }).join('');
+  const blocked = (d.ledger || []).filter((r) => !r.sellable).slice(0, 80)
+    .map((r) => `<li style="display:block">${esc(r.name)} <span class="ctag">${esc(r.code)}</span> · ${esc(r.reason || '非本时段')}</li>`).join('');
+  el.innerHTML = `<div style="font-weight:600;margin-bottom:6px">${esc(d.storeName || '')} · ${esc(c.date || '')} · 并集 ${c.unionCount || 0} 条</div>`
+    + `<div class="statusline" style="margin-bottom:8px">${chips}</div>`
+    + `<div class="note">${esc(c.note || '')}</div>`
+    + `<div style="margin-top:8px"><b>各餐段可售池</b><ul class="items">${pools}</ul></div>`
+    + `<div style="margin-top:8px"><b>目标时段（${d.targetPeriod === 'breakfast' ? '早餐' : '常规'}）可售 ${sellable.length} 条</b>`
+    + `<details style="margin-top:6px"><summary>逐商品遗漏账</summary><ul class="items">${rows || '<li style="display:block">（无）</li>'}</ul>`
+    + `<div class="note" style="margin-top:6px">未进入本时段可售池：</div><ul class="items">${blocked || '<li style="display:block">（无）</li>'}</ul></details></div>`;
+}
+
+// 卡片骨架（统一四类结果渲染：rank 徽标 + 标题/价格 + 中部 + 条目 + 警告 + 页脚 + 脚注）
+function renderCard(o){
+  return `<div class="sol ${o.primary?'top1':''}">
+    <span class="rank">${esc(o.rank)}</span>
+    <div class="sol-head">
+      <div class="sol-title">${o.titleHtml||esc(o.title||'')}${o.count?`<span class="count">${esc(o.count)}</span>`:''}</div>
+      ${o.price?`<div class="price"${o.priceSize?` style="font-size:${o.priceSize}"`:''}>${o.price}<small>${esc(o.priceNote||'')}</small></div>`:''}
+    </div>
+    ${o.middleHtml||''}
+    ${o.itemsHtml?`<ul class="items">${o.itemsHtml}</ul>`:''}
+    ${o.warnings&&o.warnings.length?`<div class="warn" style="margin-top:10px; font-size:12px; padding:10px 12px">${o.warnings.map(w=>'⚠️ '+esc(w)).join('<br>')}</div>`:''}
+    ${o.badgesHtml?`<div class="badges">${o.badgesHtml}</div>`:''}
+    ${o.footerHtml||''}
+  </div>`;
+}
+
+function renderSol(s,i,variants){
+  const m=s.metrics, kcalBudget=+$('#kcal').value;
+  const pct=Math.min(100, Math.round(m.kcal/Math.max(1,kcalBudget)*100));
+  const partial = !!m.nutritionPartial;
+  const kcalPartial = !!m.nutritionKcalPartial;
+  const unknownFields = new Set(m.nutritionUnknownFields||[]);
+  const unknownList = Array.isArray(m.__unknownItems) ? m.__unknownItems : (s.nutritionUnknownItems||[]);
+  const nutritionFieldNames = { kcal:'热量', protein:'蛋白质', fat:'脂肪', carbohydrate:'碳水', sodium:'钠' };
+  const fmtG = (v,field)=> (v==null||Number.isNaN(v)) ? '暂缺' : `${unknownFields.has(field)?'≥ ':''}${v}g${unknownFields.has(field)?'⁺':''}`;
+  const fmtMg = (v,field)=> (v==null||Number.isNaN(v)) ? '暂缺' : `${unknownFields.has(field)?'≥ ':''}${v}mg${unknownFields.has(field)?'⁺':''}`;
+  const chips = [
+    ['蛋白质', fmtG(m.protein,'protein'), !unknownFields.has('protein') && m.protein!=null && m.protein>=20],
+    ['脂肪', fmtG(m.fat,'fat')],
+    ['碳水', fmtG(m.carb,'carbohydrate')],
+    ['钠', fmtMg(m.sodium,'sodium'), !unknownFields.has('sodium') && m.sodium!=null && m.sodium<=800],
+    ['蔬菜份', m.veggie], ['主食份', m.staple],
+  ].map(([k,v,good])=>`<span class="m ${good?'good':''}">${k} <b>${v}</b></span>`).join('');
+  const nutritionGapLabel = (it)=>{
+    const fields=(it.nutritionUnknownFields||[]).map(k=>nutritionFieldNames[k]||k);
+    return fields.length?`（缺：${esc(fields.join('、'))}）`:'';
+  };
+  const kcalLabel = s.intake && s.intake.leftoverKcal > 0 ? '整篮热量占目标' : '热量占目标';
+  const kcalBarHtml = kcalPartial
+    ? `<div class="kcalbar"><div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+      <div class="lbl"><span>已知热量部分合计（非完整热量进度）</span><span>≥ ${m.kcal} / ${kcalBudget} kcal</span></div></div><div class="macros">${chips}</div>`
+    : `<div class="kcalbar"><div class="bar"><div class="fill ${pct>90?'hot':''}" style="width:${pct}%"></div></div>
+      <div class="lbl"><span>${kcalLabel}</span><span>${m.kcal} / ${kcalBudget} kcal</span></div></div><div class="macros">${chips}</div>`;
+  const missingFieldLabels=[...unknownFields].map(k=>nutritionFieldNames[k]||k);
+  const nutritionNotes = `${partial?`<div class="note" style="margin-top:4px">⁺ 营养资料不完整：标记「≥」的字段仅为已知部分合计，不用于证明硬约束达标${missingFieldLabels.length?`；缺失字段：${esc(missingFieldLabels.join('、'))}`:''}${unknownList.length?`；涉及品项：${esc(unknownList.join('、'))}`:''}。该组合仅作价格参考。</div>`:''}${m.nutritionEstimated?'<div class="note" style="margin-top:4px">† 含估算营养值，仅供参考；估算值不作为严格营养约束达标证据。来源见对应品项说明。</div>':''}`;
+  // v1.4.11 W01：整篮购买 ≠ 本人摄入。有剩余时必须分别展示，硬上限只对本人摄入成立。
+  const intake = s.intake;
+  const intakeHtml = intake && intake.leftoverKcal > 0
+    ? `<div class="note" style="margin-top:4px">本人摄入口径：整篮 ${intake.purchasedKcal} kcal，按硬约束实际分配 ${intake.memberKcal} kcal（蛋白质 ${intake.macros?.protein ?? '—'}g · 脂肪 ${intake.macros?.fat ?? '—'}g · 碳水 ${intake.macros?.carbohydrate ?? '—'}g · 钠 ${intake.macros?.sodium ?? '—'}mg）；剩余 ${intake.leftoverKcal} kcal 未计入本人摄入（${(intake.leftovers||[]).map(l=>`${esc(l.itemName)}×${l.qty} · ${l.kcal} kcal`).join('、')}）。费用仍按整篮支付。</div>`
+    : '';
+  const nutritionDisplayHtml = kcalBarHtml+nutritionNotes+intakeHtml;
+  // v1.4.7 R08：渠道必须在**每张卡**上直接可见（旧实现只在无 units 的回落分支显示 category，
+  //   带 units 的正常分支把渠道信息丢了，用户分不清团购券与官方套餐）。
+  const channelLabels=[...new Set((s.items||[]).map(it=>it.channelLabel||it.category).filter(Boolean))];
+  const channelHtml = channelLabels.length
+    ? `<div class="statusline" style="margin:0 0 8px">${channelLabels.map(c=>`<span class="chip">渠道 <b>${esc(c)}</b></span>`).join('')}${channelLabels.length>1?'<span class="chip"><b>混合购买</b></span>':''}</div>`
+    : '';
+  const variantHtml = variants && variants.length>1
+    ? `<details style="margin-top:8px"><summary style="font-size:11.5px; color:var(--muted); cursor:pointer">同一食品组合的 ${variants.length} 个购买途径（渠道/选配不同，价格与热量略有差异）</summary>
+        <ul class="items" style="margin-top:4px">${variants.map((v)=>`<li style="white-space:normal; display:block"><span>${esc(variantDesc(v))}</span><span>${fmtYuan(v.finalPriceCents)} · ${v.metrics.kcal} kcal</span></li>`).join('')}</ul></details>`
+    : '';
+  const reasonHtml = (s.reasonNotes && s.reasonNotes.length)
+    ? `<details style="margin-top:6px"><summary style="font-size:11px; color:var(--faint); cursor:pointer">为什么推荐它</summary><div style="font-size:11px; color:var(--muted); line-height:1.7; margin-top:2px">${s.reasonNotes.map(n=>'· '+esc(n)).join('<br>')}</div></details>`
+    : '';
+  return renderCard({
+    primary: i===0,
+    rank: i===0?'最优推荐':'备选 '+(i+1),
+    title: s.items.map(it=>it.name).join(' + '),
+    count: s.items.length+' 项',
+    price: fmtYuan(s.finalPriceCents),
+    priceNote: PRICE_SOURCE_LABEL[s.priceSource] || s.priceNote,
+    middleHtml: channelHtml + nutritionDisplayHtml,
+    itemsHtml: s.items.map(it=>{
+      // v1.4.6 R03：券的完整合法任选范围（与「本次选择」分开呈现）
+      const repl = Array.isArray(it.deconstruction)
+        ? it.deconstruction.filter(r=>Array.isArray(r.options)&&r.options.length>1).map(r=>`<li>${esc(r.roundName)}：${esc(r.defaultName||'')}｜可选 ${r.options.length} 种 — ${esc(r.options.map(o=>o.name+(o.diffCents>0?'+':'')+(o.diffCents!==0?fmtYuan(Math.abs(o.diffCents)):'')).join(' / '))}</li>`).join('')
+        : '';
+      const replBlock = repl ? `<details class="adv repl"><summary>可替换选项（完整任选范围）</summary><ul class="repl-list">${repl}</ul></details>` : '';
+      // v1.4.6 R03：只要后端给了逐份配置就展示（旧条件 units.length > 1 让**单份券**只剩券名，
+      //   实际选中的麦香鸡＋香芋派完全不可见）。券的完整任选范围由 deconstruction 承载（service 已含券计划）。
+      if (Array.isArray(it.units) && it.units.length > 0) {
+        const rows = it.units.map((u, ui)=>{
+          const qty = u.qty != null ? u.qty : 1;
+          const cfgText = (u.config||[]).map(c=>`${c.roundName}：${c.chosenName}`).join('＋') || '默认配置';
+          const sourceText = [...new Set((u.config||[]).map(c=>c.nutritionSource).filter(Boolean))].join('；');
+          const unitPrice = u.priceCents != null ? fmtYuan(u.priceCents)+'/份' : '—';
+          const unitKcal = u.kcal != null ? u.kcal+' kcal/份' : '—';
+          const sub = (u.priceCents != null && qty > 1) ? `小计 ${fmtYuan(u.priceCents*qty)}` : '';
+          return `<li><span>第${ui+1}份 ×${qty} · ${esc(cfgText)}${sourceText?`<small class="note" style="display:block">营养来源：${esc(sourceText)}</small>`:''}</span><span>${unitKcal} · ${unitPrice}${sub?' · '+sub:''}</span></li>`;
+        }).join('');
+        const totalQty = it.units.reduce((a,u)=>a+(u.qty||1),0);
+        // v1.4.7 R08/R09：渠道逐项标注；行价用 subtotalCents（不再用舍入单价×份数重建）
+        return `<li style="white-space:normal; display:block"><span style="font-weight:600">${esc(it.name)}${it.channelLabel?`<span class="ctag">${esc(it.channelLabel)}</span>`:''}${it.isCombo?'<span class="ctag">套餐</span>':''}${it.isVeggie?'<span class="ctag veg">蔬菜</span>':''}${it.nutritionComplete===false?`<span class="ctag" style="background:#EFECE3;color:var(--muted)">营养部分已知${nutritionGapLabel(it)}</span>`:''}${it.nutritionEstimated?'<span class="ctag">含估算值†</span>':''}</span><ul class="unit-list">${rows}</ul><div style="font-size:11px; color:var(--muted)">共 ${totalQty} 份 · 行价 ${fmtYuan(it.subtotalCents!=null?it.subtotalCents:it.price*it.qty)}</div>${replBlock}</li>`;
+      }
+      // 回落（units 缺失）：默认只显示实际要买的配置，「可替换选项」折叠（默认收起）
+      const chosenCfg = it.deconstruction
+        ? `<ul style="margin:2px 0 2px; padding-left:18px; list-style:none">${it.deconstruction.map(r=>`<li style="font-size:11px; color:var(--muted)">└ ${esc(r.roundName)}：${esc(r.defaultName)}</li>`).join('')}</ul>`
+        : '';
+      const lineTotal = it.subtotalCents!=null?it.subtotalCents:it.price*it.qty;
+      const subtotal = it.qty>1 ? `小计 ${fmtYuan(lineTotal)} · ` : '';
+      const nutritionSources = Array.isArray(it.nutritionSources)&&it.nutritionSources.length ? `<div class="note" style="margin-top:3px">营养来源：${it.nutritionSources.map(esc).join('；')}</div>` : '';
+      return `<li style="white-space:normal; display:block"><span>${esc(it.name)}${it.qty>1?'<b> ×'+it.qty+'</b>':''}${it.channelLabel?`<span class="ctag">${esc(it.channelLabel)}</span>`:''}${it.isCombo?'<span class="ctag">套餐</span>':''}${it.isVeggie?'<span class="ctag veg">蔬菜</span>':''}${it.nutritionComplete===false?`<span class="ctag" style="background:#EFECE3;color:var(--muted)">营养部分已知${nutritionGapLabel(it)}</span>`:''}${it.nutritionEstimated?'<span class="ctag">含估算值†</span>':''}</span><span>${it.kcal} kcal/份 · ${fmtYuan(it.price)}/份${it.qty>1?` · ${subtotal}`:''}${it.category?' · '+esc(it.category):''}</span>${chosenCfg}${nutritionSources}${replBlock}</li>`;
+    }).join(''),
+    badgesHtml: `${s.discountCents>0?`已优惠 ${fmtYuan(s.discountCents)} · `:''}${esc(s.priceNote)}`,
+    footerHtml: variantHtml + reasonHtml,
+  });
+}
+
+// ---- 拼单模式 ----
+// R04：保存解析响应里的完整成员对象（含 sugarFree / notes），确认卡只编辑其可编辑字段，
+// 提交时以该对象为基底合并表单值——不再从 DOM 重建一个只有 5 个键的残缺对象。
+const memberBase = new Map(); // data-id -> 成员原始对象
+let memberSeq = 0;
+function memberRow(m={}){
+  memberSeq++;
+  const id = memberSeq;
+  memberBase.set(id, { ...m }); // 保留完整成员状态
+  const notesText = (m.notes||[]).join('、');
+  return `<div class="mrow" data-id="${id}">
+    <div class="mrow-head">
+      <span class="m-title"></span>
+      <button class="del" title="删除该成员">✕</button>
+    </div>
+    <div class="m-grid">
+      <label class="m-field m-f-alias"><span class="m-lab">代称</span><input type="text" class="m-alias" placeholder="如 小李" value="${esc(m.alias||'')}"></label>
+      <label class="m-field m-f-kcal"><span class="m-lab">控卡上限 (kcal)</span><input class="m-kcal num" type="text" inputmode="decimal" data-min="1" data-max="5000" data-int="1" placeholder="不限" value="${m.kcalCap||''}"></label>
+      <label class="m-field m-f-coupon"><span class="m-lab">个人券 (元)</span><input class="m-coupon num" type="text" inputmode="decimal" data-min="0" data-max="500" placeholder="无" value="${m.personalCouponCents?(m.personalCouponCents/100):''}"></label>
+      <label class="m-field m-f-wishes"><span class="m-lab">心愿（顿号分隔）</span><input type="text" class="m-wishes" placeholder="麦辣鸡腿堡、可乐" value="${esc((m.wishes||[]).join('、'))}"></label>
+      <label class="m-field m-f-taboos"><span class="m-lab">禁忌（顿号分隔）</span><input type="text" class="m-taboos" placeholder="不吃香菜" value="${esc((m.taboos||[]).join('、'))}"></label>
+      <label class="m-field m-f-notes"><span class="m-lab">备注（少冰 / 去酸黄瓜 / 换餐等，顿号分隔）</span><input type="text" class="m-notes" placeholder="少冰、去酸黄瓜" value="${esc(notesText)}"></label>
+      <div class="m-field m-f-sugar">
+        <span class="m-lab">无糖</span>
+        <label class="m-check"><input type="checkbox" class="m-sugarfree" ${m.sugarFree?'checked':''}>排除含糖饮品（保留零度可乐）</label>
+      </div>
+    </div>
+  </div>`;
+}
+function bindDel(){
+  $$('#memberList .del').forEach(b=>b.onclick=()=>b.closest('.mrow').remove());
+}
+$('#addMember').addEventListener('click',()=>{ $('#memberList').insertAdjacentHTML('beforeend', memberRow()); bindDel(); bindNumFields($('#memberList')); });
+
+// ---- 自持券录入（轨道 3 L3 热补丁） ----
+let voucherSeq = 0;
+function voucherRow(v={}){
+  voucherSeq++;
+  return `<div class="vrow" data-vid="${voucherSeq}" style="display:flex; flex-direction:column; gap:4px; border:1px solid var(--line,#E4E0D5); border-radius:8px; padding:8px; margin-top:6px">
+    <div style="display:flex; gap:6px">
+      <input class="v-channel" placeholder="渠道（抖音/美团/其他）" value="${esc(v.channelLabel||'')}" style="flex:1">
+      <input class="v-price num" type="text" inputmode="decimal" data-min="0" data-max="500" placeholder="实付¥" value="${v.priceYuan||''}" style="width:88px">
+      <button class="del" title="删除该券">✕</button>
+    </div>
+    <input class="v-name" placeholder="券名（如：双人 6 件套券）" value="${esc(v.name||'')}">
+    <input class="v-contents" placeholder="券内品项（加号分隔：巨无霸+中薯条+可乐×2）" value="${esc(v.contentsText||'')}">
+  </div>`;
+}
+function collectUserVouchers(){
+  return $$('#voucherList .vrow').map(row=>({
+    channelLabel: $('.v-channel',row).value.trim() || '本人自持',
+    name: $('.v-name',row).value.trim() || '用户自持券',
+    priceYuan: Number($('.v-price',row).value) || 0,
+    contentsText: $('.v-contents',row).value.trim(),
+  })).filter(v=>v.contentsText);
+}
+$('#addVoucher').addEventListener('click',()=>{ $('#voucherList').insertAdjacentHTML('beforeend', voucherRow()); bindVoucherDel(); bindNumFields($('#voucherList')); });
+function bindVoucherDel(){
+  $$('#voucherList .del').forEach(b=>b.onclick=()=>{ b.closest('.vrow').remove(); });
+}
+
+$('#demoFillBtn').addEventListener('click',()=>{
+  $('#pasteBox').value = '小李：要麦辣鸡腿堡+可乐，不吃香菜\n王姐：控卡450以内，来个麦香鱼\n阿强：想吃板烧鸡腿堡，无糖可乐\n发起人：随心配随便来一个';
+  toast('示例已填入，点击「解析并回填确认卡」');
+});
+
+$('#parseBtn').addEventListener('click', async ()=>{
+  const text = $('#pasteBox').value.trim();
+  if (!text){ toast('请先粘贴群聊文本'); return; }
+  const btn=$('#parseBtn'); btn.disabled=true;
+  try {
+    const d = await jpost('/api/parse-group', { pastedText: text });
+    if (!d.needsConfirm){
+      $('#confirmStrip').style.display='none';
+      toast(d.note || '未能识别成员，请手动录入');
+      if ($('#memberList').children.length===0){ $('#memberList').innerHTML = memberRow({alias:'成员1'}) + memberRow({alias:'成员2'}); bindDel(); }
+      return;
+    }
+    memberBase.clear(); // R04：重新解析时清空旧成员状态，仅保留本次解析响应
+    $('#memberList').innerHTML = d.members.map(m=>memberRow(m)).join('');
+    bindDel();
+    bindNumFields($('#memberList'));
+    $('#confirmStrip').style.display='block';
+    toast(`已解析 ${d.members.length} 位成员，请核对确认卡`);
+  } catch(e){ toast('解析失败：'+e.message); }
+  finally { btn.disabled=false; }
+});
+
+// 归一化：心愿 / 禁忌 / 备注文本 → 数组；「无糖」由复选框或禁忌文本任一路径产生
+// （手工在禁忌里写「无糖」与粘贴解析出的 sugarFree 走同一条归一化路径）
+const SUGAR_FREE_RE = /无糖|零度|零卡/;
+function splitWishes(v){ return String(v||'').split(/[、,，+/和]|并且/).map(s=>s.trim()).filter(Boolean); }
+function splitTaboos(v){ return String(v||'').split(/[、,，/]|不吃|不要/).map(s=>s.trim()).filter(Boolean); }
+function splitNotes(v){ return String(v||'').split(/[、,，/]/).map(s=>s.trim()).filter(Boolean); }
+
+function collectMembers(){
+  return $$('#memberList .mrow').map(row=>{
+    const base = memberBase.get(Number(row.dataset.id)) || {}; // 以解析结果为基底
+    const alias = $('.m-alias',row).value.trim();
+    const wishes = splitWishes($('.m-wishes',row).value);
+    const taboos = splitTaboos($('.m-taboos',row).value);
+    const notes = splitNotes($('.m-notes',row).value);
+    const kcalRaw = $('.m-kcal',row).value.trim();
+    const couponRaw = $('.m-coupon',row).value.trim();
+    const sugarFree = $('.m-sugarfree',row).checked || taboos.some(t=>SUGAR_FREE_RE.test(t));
+    // 用表单值覆盖对应字段，保留解析结果中的其他字段（不 new 一个只有 5 个键的对象）
+    return Object.assign({}, base, {
+      alias, wishes, taboos, notes,
+      kcalCap: kcalRaw ? +kcalRaw : undefined,
+      personalCouponCents: couponRaw ? Math.round(+couponRaw*100) : undefined,
+      sugarFree,
+    });
+  }).filter(m=>m.alias || m.wishes.length || m.taboos.length);
+}
+
+$('#goGroup').addEventListener('click', async ()=>{
+  // 成员数值字段与主表单同一套校验（非法值禁止提交）
+  for (const el of $$('#memberList .m-kcal, #memberList .m-coupon, #voucherList .v-price')){
+    if (!el.value.trim()) continue;
+    const f = parseNumField(el, { required: false });
+    if (f.invalid){ toast('成员控卡/个人券/自持券金额含非法数值，请修正后重试'); el.focus(); return; }
+  }
+  const members = collectMembers();
+  if (!members.length){ toast('请先添加或解析成员'); return; }
+  if (!ensureStoreSelected()) return; // R10：提交前校验门店属于当前查询上下文
+  const btn=$('#goGroup'); btn.disabled=true;
+  const body = {
+    storeCode: storeCode||undefined, storeName: storeCode?storeName:undefined, city: $('#citySel').value,
+    members, userVouchers: collectUserVouchers(),
+    targetTime: ($('#groupTargetTime').value||'').trim()||undefined,
+  };
+  const runSync = async ()=>{
+    $('#groupResults').innerHTML = `<div class="skel"><div class="l" style="width:35%"></div><div class="l" style="width:75%"></div><div class="l" style="width:55%"></div></div>`;
+    $('#groupStatus').style.display='none';
+    try { return await jpost('/api/group-solve', body); }
+    catch(e){ $('#groupResults').innerHTML = `<div class="warn">仲裁失败：${esc(e.message)}</div>`; return null; }
+    finally { btn.disabled=false; btn.textContent='开 始 拼 单 仲 裁'; }
+  };
+  const d = await runJob('/api/jobs/group-solve', body, $('#groupResults'), runSync);
+  btn.disabled=false; btn.textContent='开 始 拼 单 仲 裁';
+  if (!d) return;
+  renderGroup(d); // v1.2 修正：与 renderGroup(d) 契约一致（旧调用传 4 个散参导致拼单页必崩）
+});
+
+function groupPlainText(s){
+  const L=[];
+  L.push(`📋 麦当劳加购指引（供发起人操作）`);
+  L.push(`1. 确认门店：${s.store.storeName}`);
+  L.push(`2. 选购商品：`);
+  if (s.basket && s.basket.length) {
+    // v5 内核：整单购买清单（每份配置精确到套餐换选）
+    for (const b of s.basket) {
+      const cfg = b.perUnitConfig && b.perUnitConfig.length
+        ? (b.perUnitConfig.length > 1 ? `（每份：${b.perUnitConfig.join(' / ')}）` : `（${b.perUnitConfig[0]}）`) : '';
+      const nutrition = groupNutritionStatusText(b);
+      const nutSource = b.nutritionSources?.length ? `（营养来源：${b.nutritionSources.join('；')}）` : '';
+      L.push(`   - [${b.channelLabel}] ${b.name} ×${b.qty}${cfg}${nutrition ? `（${nutrition}）` : ''}${nutSource}`);
+    }
+  } else {
+    for (const m of s.members) {
+      if (!m.items.length) continue;
+      L.push(`   - [${m.alias}] ${m.items.map(i=>`${i.name}${i.qty>1?'×'+i.qty:''}`).join(' + ')}`);
+    }
+  }
+  L.push(`3. 结算方式：${s.track==='voucher'
+    ? '券部分在第三方渠道购买并核销，余项回官方 APP/小程序下单（双码履约）'
+    : `发起人按上方清单在官方 APP 下单${s.totals.priceSource==='calculate-price'?'（计价接口已核验）':''}`}`);
+  L.push(`4. 订单实付：${fmtYuan(s.totals.paidCents)}（原价 ${fmtYuan(s.totals.originalCents)}${s.totals.discountCents>0?`，已省 ${fmtYuan(s.totals.discountCents)}`:''}）`);
+  L.push(``);
+  L.push(`🍟 麦麦拼单透明账单 🍟`);
+  L.push(`门店：${s.store.storeName} | 整单实付：${fmtYuan(s.totals.paidCents)}`);
+  for (const m of s.members) {
+    L.push(`@${m.alias}：${m.items.map(i=>i.name).join(' + ')||'（未匹配到品项）'}`);
+    L.push(`  └─ 原价 ${fmtYuan(m.originalCents)} ➔ 摊优惠后 ${fmtYuan(m.shareCents)}${m.personalCouponCents?` - 个人券 ${fmtYuan(m.personalCouponCents)}`:''} = 应转 ${fmtYuan(m.payableCents)}${m.savedCents>0?`（省${fmtYuan(m.savedCents)}）`:''}`);
+  }
+  // v1.4.10 W07：复制出来的分账清单同样要带缺口，不能只留在页面 warnings 里
+  const unmet = unmetListOf(s);
+  if (unmet.length) {
+    L.push(`⚠️ 还缺（本单未能满足）：`);
+    for (const u of unmet) L.push(`   - @${u.alias} ${u.text}`);
+  }
+  for (const w of s.warnings) L.push(`⚠️ ${w}`);
+  L.push(`💡 分账已按原价等比分摊，公平无纠纷。本卡不代下单、不托管资金。`);
+  return L.join('\n');
+}
+
+// ---- 拼单结果卡 v7：购买清单为主、卡内分账切换、语言简化（评审三轮 #4/#5/#6/#7） ----
+
+const TRACK_NAME = { 'a-la-carte': '官方购买方案', 'bundle': '官方组合方案', 'voucher': '美团＋官方方案' };
+let groupCardSeq = 0;
+const KEY_WARN_RE = /切勿购买|核价|高于模型|剩余|缺口|未能满足|无法满足|禁忌|营养未收录|无法验证|券面|未核验|避坑|近似方案|覆盖率/;
+
+function fmtCfg(cfgs) {
+  // 每份配置：相同合并，不同分别写清（评审三轮 #4）
+  if (!cfgs || cfgs.length === 0) return '';
+  const uniq = [...new Set(cfgs)];
+  if (uniq.length === 1) return `（每份：${uniq[0]}）`;
+  return `（${cfgs.map((c, i) => `第${i + 1}份 ${c}`).join('；')}）`;
+}
+
+function purchaseViewHtml(s) {
+  const groups = [
+    { title: '🛒 官方 APP 下单', note: '按下面清单在官方 APP/小程序选购', items: s.basket.filter(b => b.kind !== 'voucher') },
+    { title: '🎫 美团团购（先买券 · 到店核销）', note: '', items: s.basket.filter(b => b.kind === 'voucher') },
+  ].filter(g => g.items.length > 0);
+  if (s.basket.length === 0) {
+    return `<ul class="buylist">${s.members.map(m => `<li><span>@${esc(m.alias)} ${m.items.map(i => i.name + (i.qty > 1 ? '×' + i.qty : '')).join(' + ') || '（未匹配到品项）'}</span></li>`).join('')}</ul>`;
+  }
+  const nutritionCaveat = s.basket.some(b => b.nutritionEstimated || b.nutritionUnknownFields?.length)
+    ? '<div class="note" style="margin-top:4px">† 估算营养仅供参考，不作为严格营养约束的达标证据；缺失字段不按 0 计算。</div>' : '';
+  return groups.map(g => `
+    <div style="margin:4px 0 2px; font-weight:600; font-size:12.5px">${esc(g.title)}</div>
+    ${g.note ? `<div style="font-size:11px; color:var(--faint); margin-bottom:2px">${esc(g.note)}</div>` : ''}
+    <ul class="buylist">
+    ${g.items.map(b => {
+      // v1.4.10 W12：行价不再强行「单价 × 份数 = 合计」——1000 分 / 3 份会被算成 3.33×3=10（丢分且误导）。
+      //   除不尽时只给合计并注明份数；同时标出价格证据等级（已核价 / 模型价）。
+      const qtyN = Math.max(1, b.qty);
+      const divisible = b.refPriceCents % qtyN === 0;
+      const unit = divisible ? b.refPriceCents / qtyN : Math.round(b.refPriceCents / qtyN);
+      const priceTag = s.totals.priceSource === 'calculate-price' ? '' : '模型价';
+      const cfg = fmtCfg(b.perUnitConfig);
+      const specTxt = basketSpecText(b);
+      const nutSource = groupNutritionTrustHtml(b, { withSources: false });
+      const priceCell = b.kind === 'voucher'
+        ? (divisible ? `<span>券价 ${fmtYuan(unit)} ×${b.qty} = <b>${fmtYuan(b.refPriceCents)}</b></span>`
+          : `<span><b>${fmtYuan(b.refPriceCents)}</b>（${b.qty} 份券面合计）</span>`)
+        : (unit > 0
+          ? (divisible ? `<span>${fmtYuan(unit)} ×${b.qty} = <b>${fmtYuan(b.refPriceCents)}</b>${priceTag ? `<span style="font-size:10.5px;color:var(--faint)"> ${priceTag}</span>` : ''}</span>`
+            : `<span><b>${fmtYuan(b.refPriceCents)}</b>（${b.qty} 份合计，含换选差价）${priceTag ? `<span style="font-size:10.5px;color:var(--faint)"> ${priceTag}</span>` : ''}</span>`)
+          : `<span><b>${fmtYuan(b.refPriceCents)}</b>（含在套餐内）</span>`);
+      const entry = b.kind === 'voucher'
+        ? `<details style="margin-top:2px"><summary style="font-size:11px; color:var(--muted); cursor:pointer">购买/核销入口</summary><div style="font-size:11px; color:var(--muted); padding:2px 0 0 8px">购买：美团 APP 搜索该团单名称（以下单页实时价格为准）<br>核销：到店出示券码，或绑麦当劳 APP「我的-到店券」自助点餐</div></details>`
+        : '';
+      return `<li style="white-space:normal; display:block; margin:3px 0">
+        <span style="font-weight:600">${esc(b.name)} <b>×${b.qty}</b></span>
+        <span style="float:right">${priceCell}</span>
+        <div style="font-size:11px; color:var(--muted)">${esc(cfg || '')}${cfg ? ' · ' : ''}${esc(b.channelLabel)}${b.validNote ? ' · ' + esc(b.validNote) : ''}</div>
+        ${specTxt ? `<div style="font-size:11px; color:var(--muted)">规格：${esc(specTxt)}</div>` : ''}
+        ${nutSource}
+        ${entry}
+      </li>`;
+    }).join('')}
+    </ul>`).join('') + nutritionCaveat + nutritionSourceSummaryHtml(s);
+}
+
+const GROUP_NUTRITION_FIELD_NAMES = { kcal:'热量', protein:'蛋白质', fat:'脂肪', carbohydrate:'碳水', sodium:'钠', fastCarb:'快碳' };
+function groupNutritionStatusText(item) {
+  const fields = [...new Set(item.nutritionUnknownFields || [])];
+  const kcalUnknown = !!item.nutritionKcalPartial || item.nutritionMatched === false || fields.includes('kcal');
+  if (kcalUnknown && !fields.includes('kcal')) fields.unshift('kcal');
+  const labels = fields.map(k => GROUP_NUTRITION_FIELD_NAMES[k] || k);
+  return [labels.length ? `营养部分已知（缺${labels.join('、')}）` : '', item.nutritionEstimated ? '含估算值†' : ''].filter(Boolean).join('；');
+}
+function groupNutritionTrustHtml(item, opts) {
+  const status = groupNutritionStatusText(item);
+  const withSources = !(opts && opts.withSources === false);
+  const sources = withSources ? [...new Set(item.nutritionSources || (item.nutritionSource ? [item.nutritionSource] : []))] : [];
+  return `${status ? `<div class="note" style="margin-top:3px">${esc(status)}</div>` : ''}${sources.length ? `<div class="note" style="margin-top:3px">营养来源：${sources.map(esc).join('；')}</div>` : ''}`;
+}
+function groupMemberKcalText(m) {
+  if (!m.kcal) return '';
+  if (m.nutritionKcalPartial && m.nutritionEstimated) return `热量参考合计 ${m.kcal} kcal（含估算，另有热量缺失）`;
+  if (m.nutritionKcalPartial) return `已知热量部分合计 ≥${m.kcal} kcal（热量未完整）`;
+  if (m.nutritionEstimated) return `热量参考合计 ${m.kcal} kcal（含估算）`;
+  return `热量合计 ${m.kcal} kcal`;
+}
+// v1.4.10 W07：结构化缺口三处共用（购买清单 / 分账 / 复制文本）。
+//   旧实现只有购买视图里临时拼一份 gaps，分账与复制清单因此看起来「全满足」。
+const UNMET_REASON_LABEL = { 'no-candidate':'菜单内无可用候选', 'kcal-unknown':'营养未收录（控卡无法验证）', 'unsatisfied':'本方案未能分配', 'structure-unknown':'套餐结构未取得' };
+function unmetListOf(s){
+  if (Array.isArray(s.unmet) && s.unmet.length){
+    return s.unmet.map(u=>({ alias:u.alias, text:`${u.keyword}${u.missingQty>1?'×'+u.missingQty:''}（${UNMET_REASON_LABEL[u.reason]||u.reason}）` }));
+  }
+  return s.members.flatMap(m=>(m.unresolvedWishes||[]).map(w=>({ alias:m.alias, text:w })));
+}
+function gapsHtml(s){
+  const list = unmetListOf(s);
+  if (!list.length) return '';
+  return `<div style="font-size:11.5px; color:var(--red); margin-top:4px">还缺：${list.map(x=>`@${x.alias} ${x.text}`).map(esc).join('；')}</div>`;
+}
+// v1.4.10 W13：同源营养说明只在卡片底部汇总一次（折叠），不再每行重复一遍
+//   「营养来源：麦当劳官方营养表…」——长卡的主要噪声来源。
+function nutritionSourceSummaryHtml(s){
+  const srcs = new Set();
+  for (const b of (s.basket||[])) for (const x of (b.nutritionSources || (b.nutritionSource ? [b.nutritionSource] : []))) if (x) srcs.add(x);
+  for (const m of (s.members||[])) for (const x of (m.nutritionSources||[])) if (x) srcs.add(x);
+  if (!srcs.size) return '';
+  return `<details style="margin-top:4px"><summary style="font-size:11px; color:var(--muted); cursor:pointer">营养来源（${srcs.size} 项，同源说明已合并）</summary><div style="font-size:11px; color:var(--muted); padding:2px 0 0 8px">${[...srcs].map(esc).join('<br>')}</div></details>`;
+}
+function billViewHtml(s) {
+  const nutritionCaveat = s.members.some(m => m.nutritionEstimated || m.nutritionUnknownFields?.length)
+    ? '<li class="note" style="display:block; white-space:normal">† 估算营养仅供参考，不作为严格营养约束的达标证据；缺失字段不按 0 计算。</li>' : '';
+  return `<ul class="buylist">
+    ${s.members.map(m => `<li style="margin:6px 0; border-bottom:1px dashed var(--line); padding-bottom:6px">
+      <span><b>@${esc(m.alias)}</b>：${esc(m.items.map(i => i.name + (i.qty > 1 ? '×' + i.qty : '')).join(' + ') || '（未匹配到品项）')}</span>
+      <span style="display:flex; justify-content:space-between"><span>原价 ${fmtYuan(m.originalCents)} → 摊优惠 ${fmtYuan(m.shareCents)}${m.personalCouponCents ? ` − 个人券 ${fmtYuan(m.personalCouponCents)}` : ''}</span><b style="color:var(--red)">应付 ${fmtYuan(m.payableCents)}</b></span>
+      ${groupMemberKcalText(m) ? `<span style="font-size:10.5px; color:var(--faint)">${esc(groupMemberKcalText(m))}</span>` : ''}
+      ${(m.unresolvedWishes||[]).length ? `<span style="font-size:11px; color:var(--red)">未满足：${esc(m.unresolvedWishes.join('、'))}</span>` : ''}
+      ${groupNutritionTrustHtml(m, { withSources: false })}
+    </li>`).join('')}
+    ${nutritionCaveat}
+  </ul>${nutritionSourceSummaryHtml(s)}`;
+}
+
+function tieredWarnings(s) {
+  const norm = (w) => w.replace(/^[⚠️]+\s*/, '');
+  const key = s.warnings.filter(w => KEY_WARN_RE.test(w)).slice(0, 3);
+  const rest = s.warnings.filter(w => !key.includes(w));
+  return `${key.map(w => `<div style="font-size:11.5px; color:var(--red); margin:2px 0">⚠️ ${esc(norm(w))}</div>`).join('')}
+    ${rest.length > 0 ? `<details style="margin:4px 0"><summary style="font-size:11px; color:var(--faint); cursor:pointer">更多说明（${rest.length}）</summary><div style="font-size:11px; color:var(--muted)">${rest.map(w => '· ' + esc(norm(w))).join('<br>')}</div></details>` : ''}`;
+}
+
+function groupCard(s, rank, primary, isPriceMin) {
+  const seq = ++groupCardSeq;
+  groupSolBySeq.set(seq, s);
+  const cov = s.coverage ? `心愿满足 <b>${s.coverage.met}/${s.coverage.total}</b>${s.gapTotal > 0 ? `（缺 ${s.gapTotal} 份）` : ''}` : '';
+  const badges = [
+    primary ? '⭐ 推荐' : '',
+    isPriceMin ? '💰 最省钱' : '',
+    s.totals.priceSource === 'calculate-price' ? '✅ 已核价' : (s.totals.priceSource === 'mixed' ? '🧾 券参考价+官方核价' : '⚠️ 参考价未核验'),
+    s.track === 'voucher' ? '🧾 多渠道核销（操作更繁琐）' : '',
+    cov,
+  ].filter(Boolean).join(' · ');
+  // v1.4.7 R08：合并后的购买途径必须逐条可见（渠道 / 实付 / 证据等级），
+  //   不能只留一个总价让用户猜「这单到底从哪买」。
+  // v1.4.10 W14：每条购买途径都要标清**价格证据等级**（已核价/模型估价/快照参考/券参考）
+  //   与来源说明；旧实现只给「已核价」一种标签，其余途径看起来像同等级报价。
+  const purchaseOptions = Array.isArray(s.purchaseOptions) && s.purchaseOptions.length > 1
+    ? `<div class="statusline" style="margin:2px 0 6px">${s.purchaseOptions.map(o => `<span class="chip">${esc(o.label)} <b>${fmtYuan(o.paidCents)}</b> · ${esc(PRICE_SOURCE_LABEL[o.priceSource] || o.priceSource || '来源未标注')}${o.track ? ` · ${esc(TRACK_NAME[o.track] || o.track)}` : ''}${o.note ? `<span style="color:var(--faint)">（${esc(o.note)}）</span>` : ''}</span>`).join('')}</div>
+       <details style="margin:0 0 6px"><summary style="font-size:11px; color:var(--muted); cursor:pointer">各购买途径的可执行明细</summary><div style="font-size:11px; color:var(--muted); padding:2px 0 0 8px">${s.purchaseOptions.map(o => `<div style="margin:2px 0"><b>${esc(o.label)}</b> · ${fmtYuan(o.paidCents)} · ${esc(PRICE_SOURCE_LABEL[o.priceSource] || o.priceSource || '')}<br>${esc((o.items && o.items.length ? o.items : ['（该途径未返回逐项明细，以下单页为准）']).join('；'))}</div>`).join('')}</div></details>
+       <div class="note" style="margin:0 0 6px">同一食品组合有多个购买途径；当前卡按其中最优的一条展示明细，其余途径的价格与证据等级如上（未核价的以官方下单页为准）。</div>`
+    : '';
+  const gaps = unmetListOf(s);
+  const buyView = `
+    ${purchaseViewHtml(s)}
+    <div class="totalrow"><span>整单实付</span><span>${fmtYuan(s.totals.paidCents)}</span></div>
+    ${gapsHtml(s)}
+    ${tieredWarnings(s)}
+    <button class="copybtn" data-action="purchase" data-seq="${seq}">📋 复制购买清单</button>`;
+  const billView = `
+    ${billViewHtml(s)}
+    <div class="totalrow"><span>整单实付（与购买清单一致）</span><span>${fmtYuan(s.totals.paidCents)}</span></div>
+    ${gapsHtml(s)}
+    ${tieredWarnings(s)}
+    <button class="copybtn" data-action="bill" data-seq="${seq}">📋 复制分账详情</button>`;
+  // v1.4.7 R17：出餐指引 / 订单备注按卡片内联（绑定该卡自己的方案），不再在列表底部单独追加推荐卡。
+  const serveHtml = `${voucherDetailHtml(s, seq)}${notesBodyHtml(s, seq)}`;
+  const hasServe = !!serveHtml;
+  return renderCard({
+    primary,
+    rank,
+    title: TRACK_NAME[s.track] || '推荐方案',
+    price: fmtYuan(s.totals.paidCents),
+    priceNote: PRICE_SOURCE_LABEL[s.totals.priceSource] || (s.totals.priceSource === 'calculate-price' ? '已核价（计价接口）' : '参考价（以下单页为准）'),
+    middleHtml: `
+      <div class="badges">${badges} · ${esc(TRACK_NAME[s.track] || '')}</div>
+      ${purchaseOptions}
+      <div class="cardactions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:6px">
+        <button class="vbtn viewtoggle" data-seq="${seq}" data-view-btn="bill" style="width:auto; padding:4px 12px; font-size:12px">💰 分账详情</button>
+        ${hasServe ? `<button class="vbtn viewtoggle" data-seq="${seq}" data-view-btn="serve" style="width:auto; padding:4px 12px; font-size:12px">🎫 出餐指引</button>` : ''}
+      </div>
+      <div data-view="buy">${buyView}</div>
+      <div data-view="bill" style="display:none">${billView}</div>
+      ${hasServe ? `<div data-view="serve" style="display:none">${serveHtml}</div>` : ''}`,
+  });
+}
+
+function voucherPlainText(vt) {
+  const b = vt.voucherBreakdown; const sels = (b && b.selected) || [];
+  if (!sels.length) return '';
+  const L = [];
+  L.push(`🎫 渠道券履约指引`);
+  let i = 1;
+  for (const sel of sels) {
+    const v = sel.voucher;
+    L.push(`${i}. 券：${v.channelLabel}「${v.name}」参考价 ${fmtYuan(v.priceCents)}（${sel.basis === 'user-claimed' ? '按您录入金额' : '知识库参考价，以下单页为准'}）`);
+    L.push(`   覆盖心愿：${sel.coveredWishes.map(c => `${c.alias}（${c.itemName}）`).join('、') || '（券内品项）'}`);
+    L.push(`   核销路径：${v.redeemPath || '以券面说明为准'}`);
+    i++;
+  }
+  const parts = b.voucherParts || [];
+  if (parts.length) {
+    L.push(`逐券费用明细：`);
+    for (const p of parts) {
+      const cfg = p.config.map(c => `${c.roundName}:${c.chosenName}${c.count > 1 ? `×${c.count}` : ''}`).join(' + ') || '（券内品项）';
+      L.push(`   · ${p.channelLabel}「${p.name}」×${p.qty}${p.surchargeCents ? ` · 补差 ${fmtYuan(p.surchargeCents)}` : ''}：${cfg} → ${fmtYuan(p.subtotalCents)}`);
+    }
+    const sum = parts.reduce((s, p) => s + p.subtotalCents, 0);
+    L.push(`券费用合计 ${fmtYuan(sum)} + 官方补单 ${fmtYuan(b.residualPaidCents)} = 方案总价 ${fmtYuan(sum + b.residualPaidCents)}`);
+  } else {
+    L.push(`余项：回官方渠道下单，实付 ${fmtYuan(b.residualPaidCents)}`);
+  }
+  L.push(`合计支出：${fmtYuan(vt.totals.paidCents)}（${vt.totals.priceNote}）`);
+  for (const w of vt.warnings) L.push(`⚠️ ${w}`);
+  return L.join('\n');
+}
+
+function voucherDetailHtml(vt, seq) {
+  // v1.4.7 R17：出餐指引不再单独占一张卡——按方案卡内折叠，只对应该卡自己的券与分账。
+  const b = vt.voucherBreakdown; if (!b) return '';
+  const sel = (b.selected || [])[0];
+  const rows = [];
+  if (sel) {
+    const v = sel.voucher;
+    const stale = (Date.now() - new Date(v.verifiedAt).getTime()) > (b.staleDays || 14) * 86400000;
+    rows.push(`<li style="flex-direction:column; align-items:stretch">
+      <span><b>${esc(v.channelLabel)}</b> · ${esc(v.name)} <span class="ctag">${sel.basis === 'user-claimed' ? '按您录入' : '知识库参考价'}</span>${stale ? '<span class="ctag" style="background:#FCEBEB;color:#A32D2D">价格可能已变动</span>' : ''}</span>
+      <span style="display:flex; justify-content:space-between"><span>券售价（参考）</span><b>${fmtYuan(v.priceCents)}</b></span>
+    </li>`);
+  }
+  const allCovered = (b.selected || []).flatMap(x => x.coveredWishes || []);
+  rows.push(`<li style="flex-direction:column; align-items:stretch"><span style="font-weight:500">券覆盖 ${allCovered.length} 个心愿（共 ${(b.selected || []).length} 种券）</span></li>`);
+  for (const c of allCovered) {
+    rows.push(`<li><span>${esc(c.itemName)}<span class="ctag">${esc(c.alias)}</span><span class="ctag">心愿：${esc(c.wish)}</span></span><span>✓</span></li>`);
+  }
+  for (const s2 of (b.selected || [])) {
+    if (s2.inverted) {
+      rows.push(`<li style="flex-direction:column; align-items:stretch"><span style="color:#A32D2D">⚠️ 券级倒挂/无优势：${esc(s2.voucher.name)} 官方同配置 ¥${fmtYuan(s2.inverted.officialEquivalentCents)}，券价差 ${fmtYuan(s2.inverted.deltaCents)}</span></li>`);
+    }
+  }
+  if (Array.isArray(b.voucherParts) && b.voucherParts.length > 0) {
+    rows.push(`<li style="flex-direction:column; align-items:stretch"><span style="font-weight:500">逐券费用明细（全部券购买记录）</span></li>`);
+    for (const part of b.voucherParts) {
+      const cfg = part.config.map(c => `${esc(c.roundName)}:${esc(c.chosenName)}${c.count > 1 ? `×${c.count}` : ''}`).join(' + ') || '（券内品项）';
+      rows.push(`<li style="flex-direction:column; align-items:stretch"><span><b>${esc(part.channelLabel)}</b>「${esc(part.name)}」×${part.qty}${part.surchargeCents ? ` · 换选补差 ${fmtYuan(part.surchargeCents)}` : ''}</span><span style="font-size:11px; color:var(--muted)">配置：${cfg}　核销：${esc(part.redeemPath || '以券面说明为准')}</span><span style="display:flex; justify-content:space-between"><span>该券小计</span><b>${fmtYuan(part.subtotalCents)}</b></span></li>`);
+    }
+    const sum = b.voucherParts.reduce((s, part) => s + part.subtotalCents, 0);
+    rows.push(`<li style="flex-direction:column; align-items:stretch"><span>券费用合计 <b>${fmtYuan(sum)}</b> ＋ 官方补单 <b>${fmtYuan(b.residualPaidCents)}</b> ＝ 方案总价 <b>${fmtYuan(sum + b.residualPaidCents)}</b></span></li>`);
+  }
+  for (const tip of (b.candidateTips || []).slice(0, 4)) {
+    const known = tip.voucher.items && tip.voucher.items.length > 0;
+    rows.push(`<li style="white-space:normal; display:block"><span style="color:var(--muted)">💡 其他渠道参考：${esc(tip.voucher.channelLabel)}「${esc(tip.voucher.name)}」¥${fmtYuan(tip.voucher.priceCents)} — ${esc(tip.reason)}${known ? `｜购买：${esc(tip.voucher.buyPath)}` : ''}</span></li>`);
+  }
+  const warnList = [...(b.invertedWarnings || [])];
+  if (b.pointsNote) warnList.push(b.pointsNote);
+  return `<div class="note" style="margin:4px 0 2px">本卡出餐顺序：先按下方逐券购买/核销，余项回官方 APP 补单。</div>
+    <ul class="items">${rows.join('')}</ul>
+    ${warnList.length ? `<div class="warn" style="margin-top:8px; font-size:12px; padding:10px 12px">${warnList.map(w => '⚠️ ' + esc(w)).join('<br>')}</div>` : ''}
+    <button class="copybtn" data-action="voucher" data-seq="${seq}">📋 复制券履约指引文本</button>`;
+}
+
+function notesText(s) {
+  const rows = [];
+  for (const m of s.members) if (m.note) rows.push(`${m.alias}：${m.note}`);
+  for (const n of (s.orderNotes || [])) if (!rows.some(r => r.endsWith(n))) rows.push(n);
+  return rows.length ? `【订单备注】\n${rows.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n（特制需求以官方下单页实际可履约选项为准）` : '';
+}
+
+function notesRows(s) {
+  const rows = [];
+  for (const m of s.members) if (m.note) rows.push(`${m.alias}：${m.note}`);
+  for (const n of (s.orderNotes || [])) if (!rows.some(r => r.endsWith(n))) rows.push(n);
+  return rows;
+}
+
+function notesBodyHtml(s, seq) {
+  const rows = notesRows(s);
+  if (!rows.length) return '';
+  return `<ul class="items">${rows.map(r => `<li style="white-space:normal; display:block"><span>${esc(r)}</span></li>`).join('')}</ul>
+    <div class="note">特制需求（少冰/去酸黄瓜/换餐等）需在官方下单页确认可履约性，以官方返回的修改选项为准。</div>
+    <button class="copybtn" data-action="notes" data-seq="${seq}">📋 复制订单备注文本</button>`;
+}
+
+function purchasePlainText(s) {
+  const L = [`📋 麦当劳购买清单（${TRACK_NAME[s.track] || '方案'}）`, `1. 门店：${s.store.storeName}`];
+  if (s.basket && s.basket.length) {
+    L.push('2. 要买的：');
+    for (const b of s.basket) {
+      const nutrition = groupNutritionStatusText(b);
+      // v1.4.10 W11：规格（大/中/小杯、N块）必须出现在购买清单里——旧实现只印品名，
+      //   同 code 不同规格（如可乐小/中/大杯）在下单时无法区分。
+      const spec = basketSpecText(b);
+      L.push(`   - [${b.channelLabel}] ${b.name} ×${b.qty}${fmtCfg(b.perUnitConfig)}${spec ? `（规格：${spec}）` : ''} = ${fmtYuan(b.refPriceCents)}${nutrition ? `（${nutrition}）` : ''}`);
+    }
+  } else {
+    for (const m of s.members) if (m.items.length) L.push(`   - [${m.alias}] ${m.items.map(i => i.name + (i.qty > 1 ? '×' + i.qty : '')).join(' + ')}`);
+  }
+  L.push(`3. 整单实付：${fmtYuan(s.totals.paidCents)}（${s.totals.priceSource === 'calculate-price' ? '已核价' : '参考价，以下单页为准'}）`);
+  if (s.basket?.some(b => b.nutritionEstimated || b.nutritionUnknownFields?.length)) L.push('营养口径：†估算值仅供参考；缺失字段不按 0 计算，也不作为严格约束的达标证据。');
+  if (s.track === 'voucher') L.push('4. 券部分在美团购买并到店核销，其余回官方 APP 下单（双码履约）');
+  // v1.4.10 W07：缺口随清单一起复制（旧实现只挑前 3 条 warnings，缺口常被截掉）
+  const unmet = unmetListOf(s);
+  if (unmet.length) {
+    L.push('⚠️ 还缺（本单未能满足）：');
+    for (const u of unmet) L.push(`   - @${u.alias} ${u.text}`);
+  }
+  for (const w of s.warnings.filter(w => KEY_WARN_RE.test(w)).slice(0, 3)) L.push(`⚠️ ${w}`);
+  L.push('本清单不代下单、不托管资金。');
+  return L.join('\n');
+}
+
+const groupSolBySeq = new Map();
+
+// v1.4.8 R01：卡片内视图切换的唯一状态源。恰有一个内容区可见；按钮文案与选中态由活动视图派生，
+// 不再依赖「点击前的可见性」反推（那会让重复点击当前详情把全部内容隐藏）。
+function applyCardView(card, next) {
+  if (!card) return;
+  const views = {
+    buy: card.querySelector('[data-view=buy]'),
+    bill: card.querySelector('[data-view=bill]'),
+    serve: card.querySelector('[data-view=serve]'),
+  };
+  const target = views[next] ? next : 'buy';
+  card.dataset.activeView = target;
+  for (const [k, v] of Object.entries(views)) if (v) v.style.display = k === target ? 'block' : 'none';
+  $$('.viewtoggle', card).forEach(btn => {
+    const on = btn.dataset.viewBtn === target;
+    btn.style.outline = on ? '2px solid var(--red)' : 'none';
+    btn.textContent = on ? '🛒 返回购买清单'
+      : btn.dataset.viewBtn === 'serve' ? '🎫 出餐指引' : '💰 分账详情';
+  });
+}
+
+function renderGroup(d) {
+  const { solution: sol, bundle, voucherTrack: vt, decision, unified, channelDiagnostics } = d;
+  if (channelDiagnostics?.union?.deals) setRecipeDeals(channelDiagnostics.union.deals, channelDiagnostics);
+  const el = $('#groupStatus');
+  // v1.2：官方菜单不可用（且无快照）→ 需求回执视图：保留成员需求 + 美团查询结果，不再整体失败
+  if (d.menuUnavailable) {
+    el.style.display = 'flex';
+    el.innerHTML = `<span class="chip">门店 <b>${esc(sol.store.storeName)}</b></span>
+      <span class="chip">官方菜单 <b>暂不可用</b></span>
+      <span class="chip">成员 <b>${sol.members.length}</b> 人</span>`;
+    const memberEcho = sol.members.map(m => `<li style="white-space:normal;display:block"><span><b>@${esc(m.alias)}</b>：${esc((m.unresolvedWishes || []).join('、') || '（未填心愿）')}${m.personalCouponCents ? ` · 个人券 ${fmtYuan(m.personalCouponCents)}` : ''}</span></li>`).join('');
+    $('#groupResults').innerHTML =
+      `<div class="warn"><b>官方菜单暂不可用，本轮未产生购买方案</b><br>${esc(d.menuUnavailable.reason)}<br>已保留下方成员需求；可稍后重试、更换门店，或在官方 APP 核对时段后再仲裁。</div>
+       <div class="sol" style="margin-top:10px"><div class="sol-title">已收到的成员需求</div><ul class="items">${memberEcho}</ul></div>`;
+    // v1.4.6 R10：美团查询结果移入高级数据管理
+    if (channelDiagnostics) setDataDiagnostics({ title:'拼单仲裁（官方菜单不可用）', diag:channelDiagnostics, chips:'' });
+    return;
+  }
+  const list = (unified && unified.length ? unified : [sol, ...(bundle ? [bundle] : [])]).filter(Boolean);
+  // v1.4.6 R16：推荐位置由内核唯一推荐索引决定（与比价决策同源），不再固定第一个
+  const recIdx = Math.min(Math.max(0, d.recommendedIndex ?? 0), Math.max(0, list.length - 1));
+  const primaryTrack = list[recIdx] || list[0];
+  const minPaid = Math.min(...list.map(u => u.totals.paidCents));
+  el.style.display = 'flex';
+  const oc = d.orderContext;
+  const ctxChip = !oc ? ''
+    : oc.mode === 'scheduled'
+      ? `<span class="chip">用餐时间 <b>${esc(oc.reservationDate||'')}</b> ${esc(oc.periodLabel||'')}</span>`
+      : '<span class="chip">口径 <b>即时（当前时刻）</b></span>';
+  el.innerHTML = `<span class="chip">门店 <b>${esc(sol.store.storeName)}</b></span>
+    ${ctxChip}
+    <span class="chip">成员 <b>${sol.members.length}</b> 人</span>
+    ${primaryTrack.coverage ? `<span class="chip">心愿满足 <b>${primaryTrack.coverage.met}/${primaryTrack.coverage.total}</b></span>` : ''}
+    ${decision ? `<span class="chip">💡 ${esc(decision.label)}</span>` : ''}
+    <span class="chip">最省钱 <b>${fmtYuan(minPaid)}</b></span>`;
+  groupSolBySeq.clear();
+  // v1.4.6 R10：价格候选榜、团单清单、渠道比较过程全部移入「高级数据管理 → 查询与候选诊断」
+  if (channelDiagnostics) {
+    const st9 = channelDiagnostics.union && channelDiagnostics.union.stats;
+    const chips = [
+      channelDiagnostics.union ? `<span class="chip">美团查询 <b>${st9?st9.queried:(channelDiagnostics.union.queried||0)}</b> · 价格候选 <b>${st9?(st9.priceCandidates ?? st9.detailUnverified ?? 0):0}</b> · 自动比价 <b>${st9?st9.admitted:(channelDiagnostics.union.admitted||0)}</b></span>` : '',
+      `<span class="chip">统一候选 <b>${list.length}</b></span>`,
+    ].filter(Boolean).join('');
+    setDataDiagnostics({ title:'拼单仲裁', diag:channelDiagnostics, chips, ...(d.menuAudit ? { menuAudit:d.menuAudit } : {}) });
+  }
+  // v1.4.7 R17/R18：每张卡自带「分账详情 / 出餐指引」；不再在列表底部追加推荐专用卡。
+  $('#groupResults').innerHTML = list
+    .map((s, i) => groupCard(s, i === recIdx ? '⭐ 推荐方案' : `备选方案 ${i + 1}`, i === recIdx, s.totals.paidCents === minPaid))
+    .join('');
+  // 视图切换：三态（购买清单 / 分账 / 出餐指引），每张卡独立，关闭即回购买清单。
+  // v1.4.8 R01：活动视图存于卡片（data-active-view），显示、按钮文案、选中态全部由它派生。
+  //   旧实现用「当前是否可见」反推状态：重复点击当前详情 → 三个内容区一起隐藏（空卡）；
+  //   分账↔出餐交叉切换后，出餐按钮仍写「返回购买清单」但点击进入出餐内容。
+  $$('#groupResults .viewtoggle').forEach(b => {
+    b.onclick = () => {
+      const card = b.closest('.sol');
+      const target = b.dataset.viewBtn;
+      const active = card.dataset.activeView || 'buy';
+      applyCardView(card, active === target ? 'buy' : target);
+    };
+  });
+  // v1.4.7 R18：所有复制按钮统一按 action + seq 派发（旧实现按 data-copy 取值、
+  //   出餐/备注按钮没有 seq，监听器找不到方案直接 return → 4 个按钮只有 2 个能复制）。
+  $$('#groupResults .copybtn').forEach(btn => {
+    btn.onclick = async () => {
+      const s = groupSolBySeq.get(Number(btn.dataset.seq));
+      if (!s) { toast('复制失败：未找到对应方案，请重新生成结果后重试'); return; }
+      const action = btn.dataset.action || 'purchase';
+      const map = {
+        purchase: ['购买清单', purchasePlainText],
+        bill: ['分账详情', groupPlainText],
+        voucher: ['券履约指引', voucherPlainText],
+        notes: ['订单备注', notesText],
+      };
+      const entry = map[action];
+      if (!entry) { toast('未知的复制类型：' + action); return; }
+      const [label, builder] = entry;
+      let text = '';
+      try { text = builder(s) || ''; } catch (e) { toast('生成' + label + '失败：' + (e && e.message || e)); return; }
+      if (!text) { toast('该方案没有可复制的' + label); return; }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast(label + '已复制');
+      } catch (e) {
+        toast('复制失败：' + (e && e.message || e) + '（可手动选择文本复制）');
+      }
+    };
+  });
+}
+
+let latestDealDiagnostics = null;
+function setRecipeDeals(deals, diagnostics){
+  latestRecipeDeals = Array.isArray(deals) ? deals.slice() : [];
+  if(diagnostics !== undefined){ latestDealDiagnostics = diagnostics; renderDealSummary(diagnostics); }
+  renderRecipeDeals();
+}
+function safeHttpUrl(raw){
+  try { const u = new URL(String(raw||'')); return (u.protocol==='https:' || u.protocol==='http:') ? u.href : ''; }
+  catch { return ''; }
+}
+function recipeStatusText(x){
+  const s=x.status||'price-candidate';
+  return s==='admitted'?'可自动比价':s==='unavailable'?'当前不可购买':'价格候选 · 构成待核验';
+}
+// UI-4：把渠道诊断按「可决策」方式呈现——查了多少、多少能自动比价、多少只是价格候选、未核验原因分布
+function renderDealSummary(diag){
+  const el=$('#recipeDealSummary'); if(!el) return;
+  if(!diag){ el.innerHTML=''; return; }
+  const u=diag.union||{}; const s=u.stats||{};
+  const bits=[`接口查询 <b>${s.queried ?? u.queried ?? 0}</b> 条`];
+  if(s.admitted!=null) bits.push(`<b style="color:var(--green)">可自动比价 ${s.admitted}</b>`);
+  if(s.priceCandidates!=null) bits.push(`<b style="color:#B26A00">价格候选 ${s.priceCandidates}</b>`);
+  if(s.menuVerified) bits.push(`同名核验 ${s.menuVerified}`);
+  if(s.saleEnded) bits.push(`停售 ${s.saleEnded}`);
+  if(s.validityExpired) bits.push(`已过期 ${s.validityExpired}`);
+  if(s.other) bits.push(`其他排除 ${s.other}`);
+  if(u.dbUsed) bits.push(`含本地团单库兜底 ${u.dbCount ?? ''}`);
+  const reasons=Object.entries(s.unverifiedReasons||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${v}`).join('、');
+  el.innerHTML = bits.join(' · ')
+    + (u.source==='none' ? '<br>渠道：本次未直连联盟接口（无凭据或查询失败）' : '')
+    + (u.unavailableReason?`<br>渠道查询未成功：${esc(u.unavailableReason)}`:'')
+    + (reasons?`<br>未核验原因分布：${esc(reasons)}`:'')
+    + '<br>「可自动比价」= 券面构成已核验并进入求解池；「价格候选」= 在售可按券面价直接购买，但构成未核验（不参与营养/心愿计算）。';
+}
+function renderRecipeDeals(){
+  const el=$('#recipeDealList'); if(!el) return;
+  if(!latestRecipeDeals.length){ el.innerHTML='<div class="note">尚无团单清单。点「查询当前门店团单」可独立拉取（不必先精算）；完成一次精算/拼单后也会自动带出。</div>'; return; }
+  el.innerHTML=latestRecipeDeals.map((x,i)=>{
+    const url=safeHttpUrl(x.headUrl);
+    const st=x.status||'price-candidate';
+    const cls=st==='admitted'?'ctag veg':'ctag';
+    const nut=x.nutritionNote?`<div class="deal-meta">营养：${esc(x.nutritionNote)}</div>`:'';
+    const scope=x.scopeNote?`<div class="deal-meta">适用范围：${esc(x.scopeNote)}</div>`:'';
+    return `<div class="recipe-deal"><div><b>${esc(x.name||'未命名团单')}</b> <span class="${cls}">${esc(recipeStatusText(x))}</span><div class="deal-meta">${x.priceYuan!=null?fmtYuanNum(x.priceYuan):'价格未提供'} · ${esc(x.note||x.reason||'')}</div>${scope}${nut}${url?`<a href="${esc(url)}" target="_blank" rel="noopener">打开券面图</a>`:''}</div><div class="recipe-actions"><button class="btn-ghost" data-open-recipe-manager="${i}" type="button">查看规则/来源</button><button class="btn-ghost" data-recipe-deal="${i}" type="button">人工核验</button></div></div>`;
+  }).join('');
+  $$('[data-recipe-deal]',el).forEach(b=>b.onclick=()=>startRecipeFromDeal(latestRecipeDeals[Number(b.dataset.recipeDeal)]));
+}
+// UI-4：只查券——解析门店 + 渠道查询，不跑 MILP，独立于求解结果
+async function queryStoreDeals(){
+  const btn=$('#refreshRecipeDeals'), el=$('#recipeDealList');
+  if(!ensureStoreSelected()) return;
+  const old=btn.textContent; btn.disabled=true; btn.textContent='查询中…';
+  el.innerHTML='<div class="note">正在查询当前门店团单（不求解）…</div>';
+  try{
+    const d=await jpost('/api/deals',{ storeCode, storeName, city:$('#citySel').value });
+    setRecipeDeals(d.deals||[], d.diagnostics||null);
+    toast(`已查询 ${(d.deals||[]).length} 条团单（未求解）`);
+  }catch(e){ el.innerHTML=`<div class="warn">查询团单失败：${esc(e.message)}</div>`; }
+  finally{ btn.disabled=false; btn.textContent=old; }
+}
+
+// v1.4.3 券面识图工作流：显示候选不等于核验；保存前必须通过验证或显式强制确认。
+let lastRecipeCheck=null;
+let recipeDraftProductViewSign='';
+let recipeDraftSkuViewId='';
+const RECIPE_DEFAULT_BUY='美团/大众点评 APP 麦当劳门店团购页（以下单页为准）';
+const RECIPE_DEFAULT_REDEEM='到店出示券码核销（以券面说明为准）';
+/** v1.4.7 R01：草稿 ID 由「来源商品身份」派生，不再用券名 slug 当唯一性保证。
+ *  有 productViewSign/skuViewId → 稳定 ID（同一商品重复保存 = 更新，不产生副本）；
+ *  没有商品标识 → 名称 slug + 时间戳，保证两张中文券不会都落到 `rcp--v1` 而互相覆盖。 */
+function recipeDraftId(x={}){
+  const clean=(v)=>String(v||'').replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'').slice(0,28);
+  const key=String(x.productViewSign||x.skuViewId||'').trim();
+  if(key) return `rcp-${clean(key)}-v1`;
+  const slug=clean(x.name)||'deal';
+  return `rcp-${slug}-${Date.now().toString(36)}`;
+}
+function startRecipeFromDeal(x={}){
+  // v1.4.7 R19：草稿必须从**完整默认状态**初始化，再逐字段映射本次来源——
+  //   旧实现只覆盖部分字段，城市/时段/购买路径/核销路径/套餐绑定会沿用上一张券的内容。
+  $('#recipeFormPanel').style.display='';
+  $('#recipeId').value=recipeDraftId(x);
+  $('#recipeName').value=x.name||'';
+  $('#recipeAliases').value='';
+  $('#recipeHeadUrl').value=x.headUrl||'';
+  recipeDraftProductViewSign=String(x.productViewSign||'');
+  recipeDraftSkuViewId=String(x.skuViewId||'');
+  $('#recipeResolve').value='explicit';
+  recipeMenuCombos=[];
+  $('#recipeCombo').innerHTML='<option value="">选择官方菜单套餐 / SKU</option>';
+  $('#recipePrice').value=x.priceYuan!=null?Number(x.priceYuan).toFixed(2):'';
+  $('#recipeScope').value='';
+  $('#recipeTerms').value='';
+  $('#recipeBuyPath').value=RECIPE_DEFAULT_BUY;
+  $('#recipeRedeemPath').value=RECIPE_DEFAULT_REDEEM;
+  $('#recipeEvidence').value=x.headUrl?`待人工核对券面图：${x.headUrl}。请逐条记录券面原文及官方菜单/SKU证据；图片识读候选不作为核验通过依据。`:'待补券面证据。请记录来源、券面原文及官方菜单/SKU对应关系。';
+  $('#recipeVerifiedAt').value=new Date().toISOString().slice(0,10);
+  $('#recipeRuleVersion').value='manual-v1';
+  $('#recipeItems').innerHTML=''; addRecipeItemRow();
+  $('#forceRecipeSave').checked=false;
+  updateRecipeImage(); clearRecipeCheck();
+  $('#recipeFormPanel').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function updateRecipeImage(){
+  const raw=$('#recipeHeadUrl').value.trim(), url=safeHttpUrl(raw), img=$('#recipeImagePreview'), link=$('#recipeImageLink');
+  if(!url){ img.style.display='none'; img.removeAttribute('src'); link.style.display='none'; link.removeAttribute('href'); if(raw) $('#recipeCheckResult').textContent='券面图 URL 只接受 http(s) 链接；不支持 data: 或脚本协议。'; return; }
+  img.src=url; img.style.display='block'; link.href=url; link.style.display='inline-block';
+}
+function addRecipeItemRow(item={}){
+  const row=document.createElement('div'); row.className='recipe-row';
+  row.innerHTML=`<select class="recipe-item-mode"><option value="fixed">fixed 固定品项</option><option value="choice">choice 官方任选</option><option value="combo-ref">combo-ref 官方套餐</option></select><input class="recipe-item-key" type="text" placeholder="品名 / 官方类别 / 套餐 code"><input class="recipe-item-qty" type="text" inputmode="numeric" value="1" placeholder="数量"><input class="recipe-item-spec" type="text" placeholder="规格/套餐名"><button class="btn-ghost recipe-item-del" title="删除构成项">×</button><input class="recipe-item-range" type="text" placeholder="任选范围（顿号分隔，按官方轮次）" style="grid-column:1 / span 4"><input class="recipe-item-surcharge" type="text" placeholder="补差规则（原文）" style="grid-column:1 / span 4">`;
+  $('#recipeItems').appendChild(row);
+  $('.recipe-item-mode',row).value=item.mode||'fixed'; $('.recipe-item-key',row).value=item.keyword||''; $('.recipe-item-qty',row).value=item.qty||1; $('.recipe-item-spec',row).value=item.spec||item.comboName||''; $('.recipe-item-range',row).value=(item.choiceRange||[]).join('、'); $('.recipe-item-surcharge',row).value=item.surcharge||'';
+  $('.recipe-item-del',row).onclick=()=>{ row.remove(); clearRecipeCheck(); };
+  row.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',clearRecipeCheck));
+  return row;
+}
+function selectedRecipeCombo(){ return recipeMenuCombos.find(x=>x.code===$('#recipeCombo').value)||null; }
+function setRecipeComboOptions(combos,source){
+  recipeMenuCombos=Array.isArray(combos)?combos:[];
+  const sel=$('#recipeCombo');
+  sel.innerHTML='<option value="">选择官方菜单套餐 / SKU</option>'+recipeMenuCombos.map(c=>`<option value="${esc(c.code)}">${esc(c.name)} · ${esc(c.code)}</option>`).join('');
+  $('#recipeCheckResult').textContent=`已读取 ${recipeMenuCombos.length} 个套餐候选（${source==='snapshot'?'历史快照':'当前菜单响应'}）。请核对门店与券名，不要仅凭相似名称确认。`;
+}
+function clearRecipeCheck(){ lastRecipeCheck=null; $('#saveRecipeBtn').disabled=true; $('#recipeCheckResult').textContent='草稿已修改，需重新核验后才能保存。'; }
+function collectRecipeDraft(){
+  const name=$('#recipeName').value.trim();
+  const combo=selectedRecipeCombo();
+  const items=$$('#recipeItems .recipe-row').map(row=>{
+    const mode=$('.recipe-item-mode',row).value, keyword=$('.recipe-item-key',row).value.trim(), spec=$('.recipe-item-spec',row).value.trim();
+    // R05：原 `Number(value||1)` 对纯空白会静默落成 0；先 trim，空白按既有默认 1，非空则必须是正整数
+    const qtyRaw=$('.recipe-item-qty',row).value.trim();
+    const qty=qtyRaw===''?1:Number(qtyRaw);
+    if(!Number.isInteger(qty)||qty<1) throw new Error(`构成项数量「${qtyRaw}」无效，请填正整数（留空按 1）`);
+    const range=$('.recipe-item-range',row).value.split(/[、,，]/).map(x=>x.trim()).filter(Boolean);
+    const surcharge=$('.recipe-item-surcharge',row).value.trim();
+    return {mode,keyword,qty,...(spec?(mode==='combo-ref'?{comboName:spec}:{spec}):{}),...(range.length?{choiceRange:range}:{}),...(surcharge?{surcharge}:{})};
+  });
+  const priceRaw=$('#recipePrice').value.trim();
+  const binding=combo?{comboCode:combo.code,roundIds:(combo.rounds||[]).map(r=>r.roundId).filter(Boolean)}:undefined;
+  return {
+    id:$('#recipeId').value.trim(),name,matchNames:[name,...$('#recipeAliases').value.split(/[、,，]/).map(x=>x.trim()).filter(Boolean)],
+    resolve:$('#recipeResolve').value,channel:'meituan',channelLabel:'美团团购（到店）',items,
+    conditions:{orderType:'instore',...(($('#recipeTerms').value.trim())?{expireNote:$('#recipeTerms').value.trim()}:{}),...(($('#recipeScope').value.trim())?{storeScope:$('#recipeScope').value.trim()}:{})},
+    priceCents:priceRaw?Math.round(Number(priceRaw)*100):0,originalPriceCents:0,
+    buyPath:$('#recipeBuyPath').value.trim(),redeemPath:$('#recipeRedeemPath').value.trim(),
+    evidence:$('#recipeEvidence').value.trim(),verifiedAt:$('#recipeVerifiedAt').value.trim(),ruleVersion:$('#recipeRuleVersion').value.trim(),
+    ...(binding?{binding}:{}),
+    ...(recipeDraftProductViewSign?{productViewSign:recipeDraftProductViewSign}:{}),
+    ...(recipeDraftSkuViewId?{skuViewId:recipeDraftSkuViewId}:{}),
+    ...(safeHttpUrl($('#recipeHeadUrl').value.trim())?{headUrl:safeHttpUrl($('#recipeHeadUrl').value.trim())}:{}),
+  };
+}
+function showRecipeCheck(d){
+  lastRecipeCheck=d;
+  const text=[`核验状态：${d.ok?'通过（仍需门店映射/求解建池）':'未通过'}`,...(d.items||[]).map((x,i)=>`${i+1}. ${x.mode} ${x.keyword}：${x.note}${x.nutritionSource?'｜营养来源：'+x.nutritionSource:''}`),...(d.warnings||[]).length?[`告警条目：${d.warnings.map(i=>i+1).join('、')}（需要当前门店展开）`]:[],...(d.blocking||[]).length?[`阻断条目：${d.blocking.map(i=>i+1).join('、')}`]:[]].join('\n');
+  $('#recipeCheckResult').textContent=text;
+  $('#saveRecipeBtn').disabled=!(d.ok || $('#forceRecipeSave').checked);
+}
+async function loadRecipeRecords(){
+  const q=$('#recipeSearch').value.trim();
+  try {
+    const d=await jget('/api/recipes'+(q?'?q='+encodeURIComponent(q):''));
+    $('#recipeRecords').innerHTML=(d.recipes||[]).map(r=>`<div class="recipe-record"><div><b>${esc(r.name)}</b> <span class="ctag">${r.validation?.ok?'核验可用':'含待核验项'}</span><div class="deal-meta">${esc(r.id)} · ${esc(r.source)} · ${esc(r.ruleVersion)} · ${esc(r.evidence||'')}</div></div>${r.source==='preset'?'<span class="note">只读预置</span>':`<button class="btn-ghost" data-remove-recipe="${esc(r.id)}">删除</button>`}</div>`).join('')||'<div class="note">无匹配配方</div>';
+    // v1.4.7 R20：删除结果必须看 HTTP 状态与业务回执——旧实现不看 response.ok，
+    //   服务端 404 也弹「已删除」。删除用户配方 = 撤销其关联核验（需重新核验才能自动比价）。
+    $$('[data-remove-recipe]').forEach(b=>b.onclick=async()=>{
+      const id=b.dataset.removeRecipe;
+      if(!confirm('删除配方 '+id+'？\n\n删除后该配方关联的券面核验会一并失效（需重新核验才能参与自动比价）；原始证据保留在团单记录中。'))return;
+      try{
+        const r=await fetch('/api/recipes/'+encodeURIComponent(id),{method:'DELETE'});
+        const d=await r.json().catch(()=>({}));
+        if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
+        await loadRecipeRecords();
+        toast(d.note || (d.restoredPreset?'已删除用户覆盖，恢复预置配方':'配方已删除'));
+      }catch(e){toast('删除失败：'+(e&&e.message||e));}
+    });
+  } catch(e){ $('#recipeRecords').textContent='读取配方失败：'+e.message; }
+}
+async function loadNutritionRecords(){
+  try {
+    const d=await jget('/api/nutrition-supplements');
+    $('#nutritionRecords').innerHTML=(d.supplements||[]).map(s=>`<div class="recipe-record"><div><b>${esc(s.name)}${s.spec?' · '+esc(s.spec):''}</b> <span class="ctag">${esc(s.sourceType||'来源未知')}</span><div class="deal-meta">${s.kcal} kcal · P${s.protein}/F${s.fat}/C${s.carbohydrate}g · Na${s.sodium}mg<br>${esc(s.source)} · ${esc(s.sourceUrl||'无 URL')} · ${esc(s.evidence)}</div></div><button class="btn-ghost" data-remove-nutri="${esc(s.id)}">删除</button></div>`).join('')||'<div class="note">尚无用户层营养补录</div>';
+    $$('[data-remove-nutri]').forEach(b=>b.onclick=async()=>{if(!confirm('删除这条用户补录？官网营养数据不受影响。'))return;try{const r=await fetch('/api/nutrition-supplements/'+encodeURIComponent(b.dataset.removeNutri),{method:'DELETE'});if(!r.ok)throw new Error('HTTP '+r.status);await loadNutritionRecords();toast('已删除补录');}catch(e){toast('删除失败：'+e.message);}});
+  } catch(e){ $('#nutritionRecords').textContent='读取营养补录失败：'+e.message; }
+}
+let lastRecipeImportPreview=null;
+function invalidateRecipeImportPreview(){
+  lastRecipeImportPreview=null;
+  $('#confirmRecipeImport').disabled=true;
+  $('#recipeImportPreview').textContent='导入内容已修改，请重新预览；预览不会写入任何数据。';
+}
+function recipeImportPreviewHtml(data){
+  const items=data.items||[];
+  const summary=`<b>只读预览：</b>共 ${data.total} 条；可发布 ${data.publishable} 条；核验阻断 ${data.blocked} 条；规则/构成冲突 ${data.conflicted} 条。`;
+  const rows=items.map(x=>{
+    if(!x.ok) return `<div class="recipe-record"><div><b>第 ${x.index+1} 条 · 结构错误</b><div class="deal-meta">${esc(x.error||'无效条目')}</div></div></div>`;
+    const r=x.recipe, c=r.conditions||{};
+    const composition=(r.items||[]).map(it=>`${it.mode} ${it.keyword} ×${it.qty}${it.spec?`（${it.spec}）`:''}${it.choiceRange?.length?`；任选：${it.choiceRange.join('、')}`:''}`).join('；');
+    const scope=x.scope?.city||x.scope?.stores?.length?`${x.scope.city||'未指定城市'}${x.scope.stores?.length?` · 门店 ${x.scope.stores.join('、')}`:''}`:'通用（未限定）';
+    const terms=[c.orderType==='instore'?'到店':c.orderType==='delivery'?'外送':'未指定订单类型',c.timeWindow?`时段 ${c.timeWindow}`:'',c.expireNote?`有效期/说明 ${c.expireNote}`:'',c.storeScope?`规则范围 ${c.storeScope}`:''].filter(Boolean).join('；');
+    const missing=(x.nutritionMissing||[]).map(n=>`${n.keyword}：${n.estimated?'估算值，仅供参考':n.note}`).join('；');
+    const conflicts=(x.conflicts||[]).map(conf=>`${conf.reason}（${conf.name} / ${conf.id}）`).join('；');
+    const state=x.publishable?'<span class="ctag veg">可发布</span>':'<span class="ctag">暂不发布</span>';
+    const warnings=(x.check?.warnings||[]).map(i=>x.check.items?.[i]?.note).filter(Boolean).join('；');
+    return `<div class="recipe-record"><div><b>第 ${x.index+1} 条 · ${esc(r.name)}</b> ${state}<div class="deal-meta">ID ${esc(r.id)} · 规则版本 ${esc(r.ruleVersion)} · ${esc(r.resolve)}</div><div class="deal-meta">券面构成：${esc(composition||'未提供')}</div><div class="deal-meta">适用范围：${esc(scope)}；条件：${esc(terms||'未提供')}</div>${missing?`<div class="deal-meta" style="color:var(--warn-ink)">营养状态/待确认：${esc(missing)}</div>`:'<div class="deal-meta">营养：未发现未知项（仍请对照来源核对）</div>'}${conflicts?`<div class="deal-meta" style="color:var(--warn-ink)">冲突：${esc(conflicts)}</div>`:''}${warnings?`<div class="deal-meta">提示：${esc(warnings)}</div>`:''}</div></div>`;
+  }).join('');
+  return summary+`<div class="recipe-records">${rows||'<div class="note">没有可预览条目</div>'}</div><div class="note" style="margin-top:8px">${esc(data.note||'')}</div>`;
+}
+function recipeImportInputValue(){
+  const raw=$('#recipeImportJson').value.trim();
+  if(!raw) throw new Error('请先选择 JSON 文件或粘贴 JSON');
+  try { return JSON.parse(raw); } catch { throw new Error('JSON 格式无效，请修正后再预览'); }
+}
+async function previewRecipeImport(){
+  const btn=$('#previewRecipeImport'), out=$('#recipeImportPreview');
+  const source=$('#recipeImportJson').value;
+  btn.disabled=true; btn.textContent='预览中…'; $('#confirmRecipeImport').disabled=true; lastRecipeImportPreview=null;
+  try{
+    const data=await jpost('/api/recipes/import/preview',recipeImportInputValue());
+    // 若用户在网络请求期间改了内容，丢弃旧预览，避免确认发布与文本框内容不一致。
+    if($('#recipeImportJson').value!==source){out.textContent='预览期间导入内容已修改，请重新预览；旧结果不会用于发布。';return;}
+    lastRecipeImportPreview=data;
+    out.innerHTML=recipeImportPreviewHtml(data);
+    $('#confirmRecipeImport').disabled=!(data.publishableRecipes||[]).length;
+  }catch(e){out.innerHTML=`<div class="warn">预览失败：${esc(e.message)}</div>`;}
+  finally{btn.disabled=false;btn.textContent='预览导入内容';}
+}
+async function publishRecipeImport(){
+  const preview=lastRecipeImportPreview, recipes=preview?.publishableRecipes||[];
+  if(!recipes.length){toast('没有通过核验且无冲突的条目可发布');return;}
+  if(!confirm(`预览通过 ${recipes.length} 条。仅这些无冲突、无核验阻断的配方会写入；其他条目保留未发布。确认继续？`))return;
+  const btn=$('#confirmRecipeImport'), input=$('#recipeImportJson'), file=$('#recipeImportFile'), previewBtn=$('#previewRecipeImport');
+  btn.disabled=true; btn.textContent='发布中…'; input.disabled=true; file.disabled=true; previewBtn.disabled=true;
+  try{
+    const result=await jpost('/api/recipes/import',recipes);
+    $('#recipeImportPreview').insertAdjacentHTML('afterbegin',`<div class="note" style="color:var(--green);margin-bottom:6px">已完成发布：导入 ${result.imported} 条，跳过 ${result.skipped} 条。</div>`);
+    lastRecipeImportPreview=null; input.value=''; file.value='';
+    await loadRecipeRecords(); toast(`已发布 ${result.imported} 条配方`);
+  }catch(e){$('#recipeImportPreview').insertAdjacentHTML('afterbegin',`<div class="warn" style="margin-bottom:8px">发布失败：${esc(e.message)}</div>`);}
+  finally{input.disabled=false;file.disabled=false;previewBtn.disabled=false;btn.disabled=true;btn.textContent='确认导入并发布可通过项';}
+}
+function refreshRecipeCandidatesFromSolve(){
+  const solve=$('#mode-solve');
+  if(solve&&solve.style.display!=='none'){
+    const box=$('#results');
+    if(!box)return;
+    // diagnostics deals are cached in latestRecipeDeals by renderStatus; nothing to infer from rendered text.
+  }
+}
+function initRecipePanel(){
+  $('#recipeVerifiedAt').value=new Date().toISOString().slice(0,10); $('#nutriVerifiedAt').value=new Date().toISOString().slice(0,10);
+  renderRecipeDeals(); loadRecipeRecords(); loadNutritionRecords();
+  $('#refreshRecipeDeals').onclick=queryStoreDeals;
+  $('#newRecipeBtn').onclick=()=>startRecipeFromDeal({});
+  $('#recipeImportFile').addEventListener('change',async()=>{
+    const file=$('#recipeImportFile').files?.[0];
+    if(!file)return;
+    try{$('#recipeImportJson').value=await file.text();invalidateRecipeImportPreview();toast('JSON 文件已读取，请先预览');}
+    catch(e){toast('读取导入文件失败：'+e.message);}
+  });
+  $('#recipeImportJson').addEventListener('input',invalidateRecipeImportPreview);
+  $('#previewRecipeImport').onclick=previewRecipeImport;
+  $('#confirmRecipeImport').onclick=publishRecipeImport;
+  $('#recipeHeadUrl').addEventListener('input',updateRecipeImage);
+  $('#recipeName').addEventListener('input',clearRecipeCheck); $('#recipeId').addEventListener('input',clearRecipeCheck);
+  $('#recipeItems').addEventListener('input',clearRecipeCheck); $('#recipeCombo').addEventListener('change',()=>{ if($('#recipeResolve').value==='combo-name'){ const c=selectedRecipeCombo(); $('#recipeItems').innerHTML=''; addRecipeItemRow({mode:'combo-ref',keyword:c?.code||'',comboName:c?.name||'',qty:1}); } clearRecipeCheck(); });
+  $('#recipeResolve').addEventListener('change',()=>{ if($('#recipeResolve').value==='combo-name'){const c=selectedRecipeCombo();$('#recipeItems').innerHTML='';addRecipeItemRow({mode:'combo-ref',keyword:c?.code||'',comboName:c?.name||'',qty:1});}clearRecipeCheck(); });
+  $('#addRecipeItem').onclick=()=>{addRecipeItemRow();clearRecipeCheck();};
+  $('#verifyRecipeBtn').onclick=async()=>{try{const d=await jpost('/api/recipes/verify',collectRecipeDraft());showRecipeCheck(d);}catch(e){lastRecipeCheck=null;$('#saveRecipeBtn').disabled=true;$('#recipeCheckResult').textContent='核验请求失败：'+e.message;}};
+  $('#forceRecipeSave').onchange=()=>{if(lastRecipeCheck)$('#saveRecipeBtn').disabled=!(lastRecipeCheck.ok||$('#forceRecipeSave').checked);};
+  $('#saveRecipeBtn').onclick=async()=>{
+    if(!lastRecipeCheck)return;
+    const force=!lastRecipeCheck.ok&&$('#forceRecipeSave').checked;
+    try{
+      const d=await jpost('/api/recipes',{...collectRecipeDraft(),...(force?{force:true}:{})});
+      $('#recipeCheckResult').textContent=`已保存：${d.recipeId||d.saved||''}。此状态仅代表配方写入；当前门店映射和实际进入求解池仍需本次精算结果确认。`;
+      $('#recipeFormPanel').style.display='none';await loadRecipeRecords();toast('配方已保存');
+    }catch(e){
+      // v1.4.7 R01：同 ID 不同商品 → 服务端 409，必须明确提示换 ID（不静默覆盖）
+      $('#recipeCheckResult').textContent='保存失败：'+e.message;
+      toast('保存失败：'+e.message);
+    }
+  };
+  // v1.4.9 N01：读取分时段目录（只读官方菜单，不查询/不校验团购适用门店）
+  const pcBtn = $('#loadPeriodCatalog');
+  if (pcBtn) pcBtn.onclick = async () => {
+    if (!ensureStoreSelected()) return;
+    const out = $('#periodCatalogOut');
+    pcBtn.disabled = true;
+    out.innerHTML = '<div class="note">正在按餐段查询官方菜单（08:00 / 12:00 / 18:00）…</div>';
+    try {
+      const d = await jpost('/api/menu/period-catalog', {
+        storeCode, storeName, city: $('#citySel').value,
+        date: ($('#periodCatalogDate').value || '').trim() || undefined,
+        targetTime: ($('#periodCatalogTime').value || '').trim() || undefined,
+      });
+      renderPeriodCatalog(d);
+    } catch (e) {
+      out.innerHTML = `<div class="warn">读取失败：${esc(e.message)}</div>`;
+    } finally { pcBtn.disabled = false; }
+  };
+  $('#loadRecipeCombos').onclick=async()=>{if(!ensureStoreSelected())return;try{const d=await jget('/api/recipes/menu-candidates?storeCode='+encodeURIComponent(storeCode));setRecipeComboOptions(d.combos,d.source);}catch(e){toast('读取当前门店官方套餐失败：'+e.message);}};
+  $('#searchRecipesBtn').onclick=loadRecipeRecords; $('#recipeSearch').addEventListener('keydown',e=>{if(e.key==='Enter')loadRecipeRecords();});
+  $('#saveNutritionBtn').onclick=async()=>{
+    const raw={name:$('#nutriName').value.trim(),spec:$('#nutriSpec').value.trim(),kcal:$('#nutriKcal').value.trim(),protein:$('#nutriProtein').value.trim(),fat:$('#nutriFat').value.trim(),carbohydrate:$('#nutriCarb').value.trim(),sodium:$('#nutriSodium').value.trim(),sourceType:$('#nutriSourceType').value,source:$('#nutriSource').value.trim(),sourceUrl:$('#nutriSourceUrl').value.trim(),evidence:$('#nutriEvidence').value.trim(),verifiedAt:$('#nutriVerifiedAt').value,verifiedBy:'user'};
+    // R05：先判空再转换——空串/纯空白绝不允许被 Number('') 静默落成 0（未知营养不得冒充 0）
+    // 逐项报出是哪一项并聚焦；真实 0 仍允许（热量为 0 另有证据口径校验，钠等未知项请先核验来源）
+    const NUTRI_FIELDS=[['kcal','#nutriKcal','热量 kcal'],['protein','#nutriProtein','蛋白质 g'],['fat','#nutriFat','脂肪 g'],['carbohydrate','#nutriCarb','碳水化合物 g'],['sodium','#nutriSodium','钠 mg']];
+    for(const [k,sel,label] of NUTRI_FIELDS){
+      const s=raw[k];
+      if(s===''){toast(`「${label}」不得留空：未知项请先核验来源，不要用 0 代替`);$(sel).focus();return;}
+      const n=Number(s);
+      if(!Number.isFinite(n)||n<0){toast(`「${label}」不是有效非负数值，请修正后重试`);$(sel).focus();return;}
+      raw[k]=n;
+    }
+    if(!raw.name||!raw.source||!raw.evidence||!raw.verifiedAt){toast('名称、来源、证据和核验日期均必填');return;}
+    if(!$('#nutriConfirmed').checked){toast('请先确认五项营养及适用规格已核对；未知项不要用 0 代替');return;}
+    if(raw.kcal===0&&!/每份|每个|每块|份量|0\s*(?:kcal|千卡)/i.test(raw.evidence)){toast('热量为 0 需要在证据中明确说明其为真实 0 值及每份口径');return;}
+    try{await jpost('/api/nutrition-supplements',raw);await loadNutritionRecords();toast('营养补录已保存；官网命中仍优先');}catch(e){toast('保存失败：'+e.message);}
+  };
+  $('#checkOfficialNutri').onclick=async()=>{const n=$('#nutriName').value.trim();if(!n){toast('先填写食品名称');return;}try{const d=await jget('/api/nutrition/resolve?name='+encodeURIComponent(n)+'&spec='+encodeURIComponent($('#nutriSpec').value.trim()||n));const x=d.nutrition;$('#officialNutriHint').textContent=x?.sourceKind==='official-web'?`官方库命中：${x.sourceLabel}，${x.kcal} kcal。该权威值优先；同名补录不会覆盖。`:x?.sourceKind==='supplement'?`当前补录命中：${x.sourceLabel}。`: '官方库与补录层均未命中；需要先核验可追溯来源。';}catch(e){$('#officialNutriHint').textContent='查询失败：'+e.message;}};
+  $('#refreshNutritionBtn').onclick=loadNutritionRecords;
+}
+initRecipePanel();
+
+</script>
+<script src="/mcdna/panel.js"></script>
+</body>
+</html>
