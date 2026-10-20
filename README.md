@@ -1,8 +1,8 @@
 # 麦麦智能管家 · McSmart Butler
 
-**别再问「今天吃什么」了。把预算、热量和每个人的嘴，一起算进去。**
+**「今天吃什么？」把预算、热量和每个人的心愿，一起算进去。**
 
-一个本机面板 + Agent Skill：一个人配一餐，一群人拼一单，顺手把最近点过的麦当劳做成一张能发群里的 McDNA 分享卡。
+一个本机面板 + Agent Skill：一个人配一餐，一群人拼一单，最后把最近点过的麦当劳做成一张 McDNA 分享卡。
 
 [![McDonald's MCP](https://img.shields.io/badge/McDonald's-MCP-DA291C)](https://github.com/M-China/mcd-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
