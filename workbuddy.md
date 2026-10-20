@@ -57,8 +57,6 @@ WorkBuddy 协作过程包括：
 后续项目记录保留了 Skill 打包／升级、三轨比价、食品规格、分账、任务取消、McDNA 双面卡与文案校验的多轮迭代。可审阅的结果见：
 
 - [正式 Skill 模板](skill-template/SKILL.md)
-- [v1.4.10 修复记录](docs/RELIABILITY_FIX_REPORT_v1.4.10.md)
-- [v1.4.11 修复记录](docs/RELIABILITY_FIX_REPORT_v1.4.11.md)
 - [MCP 集成说明](MCP_INTEGRATION.md)
 
 这些结果记录说明项目产出，不用于反推每一行代码的客户端来源。
