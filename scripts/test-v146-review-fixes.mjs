@@ -205,8 +205,9 @@ console.log('【R16】推荐标记与决策同源');
 // ---------- R08 ----------
 console.log('【R08】券面星期/餐段规则');
 {
-  const sat0800 = new Date('2026-10-17T08:00:00+08:00');
-  const sat2000 = new Date('2026-10-17T20:00:00+08:00');
+  // 用本地时间构造，避免 CI（UTC）把 +08:00 的绝对时刻换算成 00:00 后误判餐段。
+  const sat0800 = new Date(2026, 9, 17, 8, 0, 0);
+  const sat2000 = new Date(2026, 9, 17, 20, 0, 0);
   check(redeemWindowStatus({ name: '芝香脆鸡扒堡早餐两件套【仅周二可核销】' }, sat0800).ok === false, '周六不可核销「仅周二」券');
   check(redeemWindowStatus({ name: '火腿扒堡早餐两件套【仅周一&周五可核销】' }, sat0800).ok === false, '周六不可核销「周一&周五」券');
   check(redeemWindowStatus({ name: '高达芝士蛋堡早餐两件套【仅周三可核销】' }, sat0800).ok === false, '周六不可核销「仅周三」券');
