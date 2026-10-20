@@ -1,4 +1,4 @@
-# 麦麦智能管家 · McSmart Butler
+# 麦麦智能管家 · McSmart Butler <a href="https://github.com/Hanmoy/mcsmart-butler/stargazers"><img align="right" src="https://img.shields.io/github/stars/Hanmoy/mcsmart-butler?style=social" alt="Star on GitHub"></a>
 
 **「今天吃什么？」把预算、热量和每个人的心愿，一起算进去。**
 
@@ -217,6 +217,12 @@ node "$skillDir/scripts/mcsmart.mjs" ui --open
 ## 开发与验证
 
 技术栈：Node.js、TypeScript、HiGHS WASM／MILP、原生 HTML/CSS/JavaScript。业务编排唯一入口为 `src/service.ts`，HTTP 与 CLI 共用它。
+
+<p align="center">
+  <img src="docs/screens/architecture-dark.png" width="900" alt="麦麦智能管家 模块依赖与系统架构图（确定性编排 × HiGHS MILP × 多渠道核验）">
+</p>
+
+> 💡 **架构交互版**：可直接在浏览器打开 [`docs/architecture.html`](docs/architecture.html) 进行缩放平移、节点拓扑高亮与深浅色模式切换。
 
 ~~~powershell
 npm.cmd run build
