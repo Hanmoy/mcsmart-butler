@@ -1,0 +1,59 @@
+/* 静态演示专用样式：只加提示与演示标记，不改业务布局。 */
+.demo-banner {
+  position: relative;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  padding: 10px clamp(12px, 3vw, 28px);
+  background: #201b13;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.6;
+  border-bottom: 3px solid #ffc72c;
+}
+.demo-banner strong { color: #ffc72c; }
+.demo-banner .demo-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #ffc72c;
+  color: #201b13;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.demo-banner .demo-links {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+.demo-banner a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+.demo-banner a:hover { color: #ffc72c; }
+.demo-banner .demo-sub { color: #d8cdb8; }
+.demo-chip {
+  background: #fff0b8 !important;
+  color: #5e4300 !important;
+  border-color: #e0bd55 !important;
+}
+#tokenPill.demo-pill {
+  background: #fff0b8;
+  color: #5e4300;
+  border-color: #e0bd55;
+}
+.demo-data-flag {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px dashed #c9a227;
+  border-radius: 6px;
+  background: #fff8df;
+  color: #6b5200;
+  font-size: 11px;
+  line-height: 1.5;
+}
+@media (max-width: 560px) {
+  .demo-banner { align-items: flex-start; font-size: 12px; }
+  .demo-banner .demo-links { margin-left: 0; width: 100%; }
+}
