@@ -24,7 +24,6 @@ jobs:
         node: [22, 24]
     env:
       CI: "true"
-      MCSMART_HOME: ${{ runner.temp }}/mcsmart-home
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -36,6 +35,8 @@ jobs:
       - name: Build
         run: npm run build
       - name: Node tests
+        env:
+          MCSMART_HOME: ${{ runner.temp }}/mcsmart-home
         run: npm test
 
   browser:
@@ -44,7 +45,6 @@ jobs:
     timeout-minutes: 30
     env:
       CI: "true"
-      MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-browser
       MCSMART_REQUIRE_BROWSER: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,6 +64,8 @@ jobs:
           python -m pip install --disable-pip-version-check playwright
           python -m playwright install chromium
       - name: Browser tests
+        env:
+          MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-browser
         run: npm run test:browser
 
   package:
@@ -72,7 +74,6 @@ jobs:
     timeout-minutes: 30
     env:
       CI: "true"
-      MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-package
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -84,8 +85,11 @@ jobs:
       - name: Build
         run: npm run build
       - name: Build Skill package
+        env:
+          MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-package
         run: npm run package -- --zip
       - name: Verify package license and version
         env:
           MCSMART_PACKAGE_DIR: dist-package/mcsmart-butler
+          MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-package-verify
         run: node scripts/test-release-readiness.mjs
