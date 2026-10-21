@@ -3,14 +3,18 @@
 // - 只在网络边界注入 mock-fetch.js（不接账户、不查实时价格、不下单）
 // - 演示回执由 scripts/demo-fixtures.mjs 用真实 service + 离线菜单生成
 // 运行：node scripts/demo-fixtures.mjs && node scripts/build-static-demo.mjs
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { syncBrowserFoodIdentity } from './build-browser-food-identity.mjs';
+
+syncBrowserFoodIdentity();
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const srcPublic = join(root, 'public');
 const out = join(root, 'docs/demo');
-const fixtures = join(out, 'fixtures');
+const fixtures = process.argv.includes('--fixtures')
+  ? resolve(process.argv[process.argv.indexOf('--fixtures') + 1]) : join(out, 'fixtures');
 const template = join(root, 'scripts/demo-template');
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 
@@ -31,7 +35,9 @@ function copyDir(from, to) {
 }
 
 const single = readJson('single.json');
+const singleCases = readJson('single-cases.json');
 const group = readJson('group.json');
+const groupInput = readJson('group-input.json');
 const parseGroup = readJson('parse-group.json');
 const mcdna = readJson('mcdna.json');
 const demoText = readFileSync(join(fixtures, 'demo-text.txt'), 'utf8').trim();
@@ -51,7 +57,9 @@ const demoData = {
   version: pkg.version,
   demoText,
   single,
+  singleCases,
   group,
+  groupInput,
   parseGroup,
   mcdna,
 };
@@ -71,7 +79,7 @@ copyFileSync(join(template, 'demo.css'), join(out, 'demo.css'));
 const banner = [
   '<div class="demo-banner" role="note">',
   '  <span class="demo-tag">DEMO</span>',
-  '  <span><strong>静态演示</strong> · 内置模拟菜单与回执，不连接麦当劳账户、不查询实时价格、不会下单。输入可改，结果固定用于展示。</span>',
+  '  <span><strong>静态示例演示</strong> · 可切换预设场景，条件与结果一一对应。任意输入计算请使用本地完整版。不连接账户、不查实时价格、不会下单。</span>',
   '  <span class="demo-sub">价格与营养均为示例，不构成真实报价。</span>',
   '  <span class="demo-links"><a href="https://github.com/Hanmoy/mcsmart-butler" target="_blank" rel="noopener">源码</a><a href="https://github.com/Hanmoy/mcsmart-butler/releases" target="_blank" rel="noopener">下载</a></span>',
   '</div>',
@@ -84,7 +92,7 @@ html = html.replace(
   '<span class="tag-chip">麦当劳官方 MCP · 实时数据</span>',
   '<span class="tag-chip demo-chip">静态演示 · 模拟数据</span>',
 );
-html = html.replace('<body>', `<body>\n${banner}`);
+html = html.replace('<body>', () => `<body>\n${banner}`);
 html = html.replace('</head>', '  <link rel="stylesheet" href="demo.css">\n</head>');
 if (!html.includes('<script src="/mcdna/panel.js"></script>')) throw new Error('public/index.html 缺少 mcdna 脚本引用');
 html = html.replace('<script src="/mcdna/panel.js"></script>', '<script src="mcdna/panel.js"></script>');
@@ -99,7 +107,7 @@ html = html.replace(
 // 演示页把“填入示例”换成与多人回执一致的群聊文本。
 const demoLiteral = JSON.stringify(demoText);
 const before = html;
-html = html.replace(/\$\('#pasteBox'\)\.value = '[^']*';/, `$('#pasteBox').value = ${demoLiteral};`);
+html = html.replace(/\$\('#pasteBox'\)\.value = '[^']*';/, () => `$('#pasteBox').value = ${demoLiteral};`);
 if (html === before) throw new Error('未找到多人“填入示例”文本，无法同步演示数据');
 html = html.replace('<head>', '<head>\n<!-- 静态演示：由 scripts/build-static-demo.mjs 生成，请勿手改 -->');
 
@@ -127,7 +135,7 @@ writeFileSync(join(root, 'docs/index.html'), `<!doctype html>
 <main>
   <div class="eyebrow">MCSMART BUTLER · STATIC DEMO</div>
   <h1>把“大家想吃什么？”<br>变成一份能照着点的组合。</h1>
-  <p>这是只读静态演示：使用内置模拟菜单，不登录账户、不查询实时价格、不会下单。你可以实际点击单人精算与多人拼单，看看推荐组合、分账与购买清单长什么样。</p>
+  <p>这是静态示例演示：切换预设场景，查看对应的推荐组合、预算不足回执、多人分账与购买清单。不登录账户、不查询实时价格、不会下单。任意输入计算请使用本地完整版。</p>
   <a class="cta" href="./demo/">进入静态演示 →</a>
   <p class="note">项目源码：<a href="https://github.com/Hanmoy/mcsmart-butler">github.com/Hanmoy/mcsmart-butler</a></p>
 </main>

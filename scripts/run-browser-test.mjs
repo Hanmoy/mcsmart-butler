@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const scripts = ['test-v144-browser.py', 'test-mcdna-browser.py', 'test-v1411-browser.py'].map(name => join(here, name));
+const scripts = ['test-v144-browser.py', 'test-mcdna-browser.py', 'test-v1411-browser.py', 'test-static-demo.py'].map(name => join(here, name));
 
 const candidates = [process.env.PYTHON, 'python', 'python3', 'py'].filter(Boolean);
 

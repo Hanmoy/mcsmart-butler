@@ -23,8 +23,9 @@ export function renderSingleText(out: SingleSolveOutput): string {
   out.solutions.forEach((sol, i) => {
     const m = sol.metrics;
     L.push(line());
-    L.push(`方案 ${i + 1}/${out.solutions.length}｜实付 ${yuan(m.price)}｜整篮 ${m.kcal} kcal${sol.intake && sol.intake.leftoverKcal > 0 ? `（本人摄入 ${sol.intake.memberKcal} kcal，剩余 ${sol.intake.leftoverKcal} kcal 未分配）` : '（预算内贴合）'}${i === 0 ? ' ← 推荐' : ''}`);
+    L.push(`方案 ${i + 1}/${out.solutions.length}｜实付 ${yuan(m.price)}｜整篮 ${m.kcal} kcal${sol.intake && !sol.intake.complete ? `（本人摄入 ${sol.intake.memberKcal} kcal，剩余 ${sol.intake.leftoverKcal} kcal 未分配）` : ''}${i === 0 ? ' ← 推荐' : ''}`);
     if (sol.singleFallback) L.push('  （套餐池无解，已放宽加入单品）');
+    if (m.nutritionEstimated) L.push('  ⚠️ 含估算营养值，仅供参考；不能作为严格营养约束达标的证明。');
     for (const it of sol.items) {
       // v1.4.10 W16：行价优先使用 service 已给出的准确小计（subtotalCents），
       //   旧实现用四舍五入单价 × 份数，1000/1001 分两份会显示 2002 而实付 2001。
@@ -48,6 +49,9 @@ export function renderSingleText(out: SingleSolveOutput): string {
         L.push(`      · ${d.roundName}：${d.defaultName}${cheaper ? `｜可换选更低价：${cheaper}` : ''}`);
       }
     }
+    for (const note of sol.reasonNotes ?? []) {
+      if (/热量贴合|超出|未收录|估算|本人摄入|备选搜索/.test(note)) L.push(`  · ${note}`);
+    }
   });
   // 详情（推荐方案）
   const best = out.solutions[0];
@@ -56,7 +60,7 @@ export function renderSingleText(out: SingleSolveOutput): string {
   L.push('【详情·推荐方案】');
   L.push(`  营养合计：热量 ${m.kcal} kcal｜蛋白质 ${m.protein}g｜脂肪 ${m.fat}g｜碳水 ${m.carb}g｜钠 ${m.sodium}mg${m.nutritionPartial ? '｜⚠️ 部分品项营养未收录，以上为已收录部分' : ''}`);
   // v1.4.11 W01：整篮营养 ≠ 本人摄入；有剩余时给出实际分配与逐项剩余（硬上限只对本人摄入成立）。
-  if (best.intake && best.intake.leftoverKcal > 0) {
+  if (best.intake && (!best.intake.complete || (best.intake.leftovers?.length ?? 0) > 0 || best.intake.leftoverKcal > 0)) {
     const mi = best.intake.macros;
     L.push(`  本人摄入：${best.intake.memberKcal} kcal（整篮 ${best.intake.purchasedKcal} kcal，剩余 ${best.intake.leftoverKcal} kcal 未计入本人摄入）｜蛋白质 ${mi.protein}g｜脂肪 ${mi.fat}g｜碳水 ${mi.carbohydrate}g｜钠 ${mi.sodium}mg`);
     L.push(`  逐项剩余：${(best.intake.leftovers ?? []).map((l) => `${l.itemName}×${l.qty}（${l.kcal} kcal）`).join('、')}——费用已并入整单，硬上限按本人摄入判定`);

@@ -610,7 +610,7 @@ async function solveSingleImpl(
       // v1.2：推荐理由（各阶段求解决策链，用户可读）随方案输出
       const reasonNotes = [...r.notes];
       if (priceMismatch) reasonNotes.push(`价格核对：条目行价合计 ${itemsSubtotal} 分与模型合计 ${r.totals.priceCents} 分不一致（已按条目行价展示，请以明细为准）。`);
-      if (r.leftovers.length > 0 && intakeKcal !== purchasedKcal) {
+      if (r.leftovers.length > 0) {
         reasonNotes.push(`本人摄入口径：整篮 ${purchasedKcal} kcal，按你的硬约束实际分配 ${intakeKcal} kcal，剩余 ${Math.max(0, purchasedKcal - intakeKcal)} kcal（${r.leftovers.map((l) => `${l.itemName}×${l.qty}`).join('、')}）未计入本人摄入；费用仍按整篮支付。`);
       }
       if (items.some((it) => it.category === '美团团购 · 券品')) {

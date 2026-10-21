@@ -2,7 +2,8 @@
 // 说明：使用真实 service 输出契约 + 离线 mock MCP 菜单，只替换网络边界；
 //       不连接真实账户、不查询真实门店、不生成真实订单。输出为确定性数据。
 // 运行：node --env-file-if-exists=.env scripts/demo-fixtures.mjs [--out docs/demo/fixtures]
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,10 +11,12 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const outDir = resolve(process.argv.includes('--out')
   ? process.argv[process.argv.indexOf('--out') + 1]
   : join(root, 'docs/demo/fixtures'));
-process.env.MCSMART_HOME = join(root, '.work/demo-home');
+process.env.MCSMART_HOME = mkdtempSync(join(tmpdir(), 'mcsmart-demo-'));
 process.env.MEITUAN_UNION_APPKEY = '';
 process.env.MEITUAN_UNION_APPSECRET = '';
 process.env.MCSMART_DISABLE_BUNDLED_UNION = '1';
+// 全部业务网络必须经过下方离线 client，防止误连个人账户或上游接口。
+globalThis.fetch = async () => { throw new Error('静态演示数据生成禁止联网'); };
 
 const S = await import('../dist/service.js');
 
@@ -116,33 +119,37 @@ function makeClient() {
 }
 
 const client = makeClient();
-const single = await S.serviceSolveSingle(client, {
+const store = {
   storeCode: 'S-DEMO',
   storeName: '麦当劳（人民广场店）',
   city: '上海',
-  kcal: 700,
-  yuan: 32,
-  objectives: ['protein'],
-  targetTime: undefined,
-}, {});
-
-const groupInput = {
-  storeCode: 'S-DEMO',
-  storeName: '麦当劳（人民广场店）',
-  city: '上海',
-  members: [
-    { alias: '小林', wishes: ['板烧鸡腿堡', '零度可乐'], taboos: [] },
-    { alias: '小周', wishes: ['麦辣鸡腿堡', '薯条'], taboos: [] },
-    { alias: '小陈', wishes: ['麦香鱼'], taboos: [], kcalCap: 400 },
-  ],
 };
-const group = await S.serviceSolveGroup(client, groupInput, {});
+const singleCases = [];
+for (const scenario of [
+  { id: 'lunch', label: '午餐 · 700 kcal / ¥32 / 至少 1 份主食', kcal: 700, yuan: 32, staple: 1, objectives: ['protein'] },
+  { id: 'two-staples', label: '双主食 · 1000 kcal / ¥50 / 至少 2 份主食', kcal: 1000, yuan: 50, staple: 2, objectives: ['price'] },
+  { id: 'low-budget', label: '预算不足 · 700 kcal / ¥10 / 至少 1 份主食', kcal: 700, yuan: 10, staple: 1, objectives: ['price'] },
+]) {
+  const input = { ...store, kcal: scenario.kcal, yuan: scenario.yuan, objectives: scenario.objectives,
+    constraints: [{ metric: 'staple', op: '>=', value: scenario.staple }] };
+  const result = await S.serviceSolveSingle(client, input, {});
+  singleCases.push({ id: scenario.id, label: scenario.label, input, result });
+}
+const single = singleCases[0].result;
+
 const demoText = '小林：板烧鸡腿堡、零度可乐\n小周：麦辣鸡腿堡、薯条\n小陈：麦香鱼，控卡 400';
 const parsed = S.serviceParseGroup(demoText);
+const groupInput = {
+  ...store,
+  members: parsed.members,
+  userVouchers: [],
+};
+const group = await S.serviceSolveGroup(client, groupInput, {});
 const mcdna = await S.serviceMcdna(null, { demo: true, amountMode: 'tier' });
 
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'single.json'), JSON.stringify(single, null, 2) + '\n');
+writeFileSync(join(outDir, 'single-cases.json'), JSON.stringify(singleCases, null, 2) + '\n');
 writeFileSync(join(outDir, 'group.json'), JSON.stringify(group, null, 2) + '\n');
 writeFileSync(join(outDir, 'group-input.json'), JSON.stringify(groupInput, null, 2) + '\n');
 writeFileSync(join(outDir, 'parse-group.json'), JSON.stringify(parsed, null, 2) + '\n');

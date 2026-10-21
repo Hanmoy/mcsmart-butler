@@ -8,6 +8,7 @@
 //   node scripts/package-skill.mjs install --from <包目录> --to <目标skill目录>
 //   node scripts/package-skill.mjs rollback --to <目标skill目录>
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, readdirSync, statSync, copyFileSync, renameSync } from 'node:fs';
+import { syncBrowserFoodIdentity } from './build-browser-food-identity.mjs';
 import { join, resolve, basename, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -141,6 +142,7 @@ function cmdBuild(args) {
   if (tsc.error) log(`   tsc 子进程受环境限制（${tsc.error.code ?? ''}）→ 改用现有 dist 产物（需先确保已编译）`);
   else if (tsc.status !== 0) throw new Error('tsc 编译失败');
   if (!existsSync(join(ROOT, 'dist', 'cli.js'))) throw new Error('编译产物缺失 dist/cli.js');
+  syncBrowserFoodIdentity();
 
   log('2/6 组装目录结构…');
   rmSync(stage, { recursive: true, force: true });

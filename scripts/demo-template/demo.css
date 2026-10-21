@@ -53,6 +53,12 @@
   font-size: 11px;
   line-height: 1.5;
 }
+.demo-scenarios select { width: 100%; min-height: 44px; white-space: normal; }
+.demo-scenarios .note { margin-bottom: 0; }
+#mode-solve input[readonly], #mode-group input[readonly], #pasteBox[readonly] {
+  background: #f7f3e9;
+}
+#mode-solve button:disabled, #mode-group button:disabled { cursor: default; }
 @media (max-width: 560px) {
   .demo-banner { align-items: flex-start; font-size: 12px; }
   .demo-banner .demo-links { margin-left: 0; width: 100%; }

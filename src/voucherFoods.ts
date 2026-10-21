@@ -53,6 +53,8 @@ export interface ResolvedVoucherSlotOption {
   kcalKnown: boolean;
   priceCents: number;
   diffCents: number;
+  /** 官方渠道换选差价：只作结构证据，不计入券渠道价格。 */
+  officialDiffCents?: number;
   /** v1.4.5 W03：券面有补差说明但无法归因到本选项——0 是占位，不得宣称「免费」 */
   diffUnknown?: boolean;
   staple: boolean;
@@ -445,13 +447,21 @@ export function resolveVoucherFoods(
       }
       const before = slots.length;
       const missingRounds: string[] = [];
+      let officialDiffSeen = false;
       for (let q = 0; q < refQty; q++) {
         for (const round of combo.deconstruction) {
           const roundName = refQty > 1 ? `${round.roundName}（第${q + 1}份）` : round.roundName;
           const opts: ResolvedVoucherSlotOption[] = [];
           for (const opt of round.options) {
             const resolvedOpt = resolveFixedVoucherFood({ keyword: opt.name, mode: 'fixed', qty: 1 }, context.menu);
-            if (resolvedOpt) opts.push(toOption(resolvedOpt, opt.diffCents));
+            if (resolvedOpt) {
+              // 与纯 combo-ref 的 voucherSlots 路径一致：官方差价不是券面核销补差。
+              opts.push({
+                ...toOption(resolvedOpt, 0),
+                ...(opt.diffCents ? { officialDiffCents: opt.diffCents } : {}),
+              });
+              if (opt.diffCents) officialDiffSeen = true;
+            }
           }
           if (opts.length > 0) {
             slots.push({
@@ -470,6 +480,7 @@ export function resolveVoucherFoods(
         group: comboName, mode: 'combo-ref', qty: refQty, declared,
         resolved: slots.length - before, complete: missingRounds.length === 0,
         unsupported: missingRounds.map((r) => ({ name: r, reason: '轮次内选项均无法解析' })),
+        ...(officialDiffSeen ? { surchargeUnknown: true } : {}),
       });
       if (slots.length === before) {
         unresolvedReasons.push(`官方套餐「${comboName}」的轮次选项均无法解析`);

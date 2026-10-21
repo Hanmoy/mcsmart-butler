@@ -67,6 +67,15 @@ jobs:
         env:
           MCSMART_HOME: ${{ runner.temp }}/mcsmart-home-browser
         run: npm run test:browser
+      - name: Rebuild static demo from offline service fixtures
+        run: |
+          node scripts/demo-fixtures.mjs --out "${{ runner.temp }}/mcsmart-demo-fixtures"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/build-static-demo.mjs --fixtures "${{ runner.temp }}/mcsmart-demo-fixtures"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/test-static-demo.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -X utf8 scripts/test-static-demo.py
 
   package:
     name: Package smoke test

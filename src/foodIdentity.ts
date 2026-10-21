@@ -5,13 +5,13 @@
 //   - 单人 Top-K、跨轨统一去重、前端分组三处此前各写一套字符串规则（显示名 / perUnitConfig / 名称+热量），
 //     结果一边「该合并的没合并」（同一食品拆成套餐/散点、别名占两席），一边「不该合并的合并了」
 //     （同名不同规格因名称相同被归为一组，或用热量替代规格身份）。
-//   - 身份优先级：结构化 option code（官方 SKU/选项 code）> 归一化名称；**规格标签始终参与身份**
+//   - 身份按归一化品名主体与规格判定，履约 code 不参与；**规格标签始终参与身份**
 //     （v1.4.8 R07：同 code 的小/大份是不同食品——小薯 210 kcal / 大薯 379 kcal，合并会丢掉合法候选）。
 //     同 code 同规格的别名、排列、渠道仍归同一身份。**绝不**用热量近似规格。
 //   - 非食品（玩具/餐具）不参与「吃什么」签名：换玩具不构成不同方案。
 
 export interface FoodUnitRef {
-  /** 结构化选项 code（官方 SKU / 菜单选项 code）；有值时优先作为身份 */
+  /** 结构化选项 code（官方 SKU / 菜单选项 code）；保留履约信息，不作为食品身份 */
   code?: string;
   /** 显示名（无 code 时参与身份） */
   name: string;
@@ -47,6 +47,7 @@ export function normSpecKey(spec: string | undefined): string {
  *  避免把「大脆鸡扒」这类产品名误当成大份。 */
 const RE_NAME_SPEC = /(超大|大|中|小|迷你)(?=杯|份|薯|可乐|雪碧|薯条|咖啡|奶铁|豆浆|美式|红茶|果汁|牛奶|冰茶)/;
 const RE_NAME_PIECE = /([一二两三四五六七八九十\d]+)\s*块/;
+const RE_PURE_SPEC = /^(?:(?:超大|大|中|小|迷你)(?:杯|份)?|[一二两三四五六七八九十\d]+(?:块|个|件|片|只|根|份|杯))$/;
 
 /** 从显示名推断规格键（仅用于身份签名，不改变展示名） */
 export function specOfName(name: string | undefined): string {
@@ -54,8 +55,13 @@ export function specOfName(name: string | undefined): string {
   const m = s.match(RE_NAME_SPEC);
   if (m) return m[1];
   // 后置规格（「薯条 中」「可乐 大」）：仅当规格字前还有品名主体时采信
-  const tail = s.match(/^(..+)(超大|大|中|小|迷你)$/);
+  const tail = s.match(/^(..+?)(超大|大|中|小|迷你)(?:杯|份)?$/);
   if (tail) return tail[2];
+  for (const bracket of s.matchAll(/[（(【\[]([^）)】\]]*)[）)】\]]/g)) {
+    if (!RE_PURE_SPEC.test(bracket[1])) continue;
+    const spec = normSpecKey(bracket[1]);
+    if (spec) return spec;
+  }
   const p = s.match(RE_NAME_PIECE);
   if (p) {
     const n = ({ 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 } as Record<string, number>)[p[1]] ?? parseInt(p[1], 10);
@@ -64,12 +70,14 @@ export function specOfName(name: string | undefined): string {
   return '';
 }
 
-/** 归一化品名主体：去括号描述、去规格前缀、统一「汉堡/汉堡包→堡」。
+/** 归一化品名主体：仅去确定的规格/汉堡类别描述，保留糖型、风味等食品身份。
  *  同一食品的官方套餐槽位名、单点名、券名走同一主体名，才不会被路径差异拆开。 */
 export function canonicalFoodName(name: string | undefined): string {
-  let s = String(name ?? '').replace(/[（(【\[].*?[)）】\]]/g, '').replace(/\s+/g, '').toLowerCase();
-  s = s.replace(RE_NAME_SPEC, '');
+  let s = normFoodName(name).replace(/[（(【\[]([^）)】\]]*)[）)】\]]/g, (_all, inner: string) =>
+    inner.split(/[·、，,/]/).filter((part) => part && !RE_PURE_SPEC.test(part) && !/^(?:汉堡|汉堡包|堡)$/.test(part)).join(''));
+  s = s.replace(/(超大|大|中|小|迷你)(?:杯|份)/g, '').replace(RE_NAME_SPEC, '');
   s = s.replace(/^[一二两三四五六七八九十\d]+块/, '');
+  s = s.replace(/[一二两三四五六七八九十\d]+块$/, '');
   if (s.length > 2) s = s.replace(/(超大|大|中|小|迷你)$/, '');
   s = s.replace(/汉堡包/g, '堡').replace(/汉堡/g, '堡');
   if (s.length > 2) s = s.replace(/堡$/, '');

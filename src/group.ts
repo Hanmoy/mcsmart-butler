@@ -130,6 +130,7 @@ export function parseWishPhrase(phrase: string): WishSpec | null {
     .replace(/[一二两三四五六七八九十\d]+\s*件套/g, '')
     .replace(/套餐|件套|全家桶|豪华桶/g, '')
     .replace(/^(我想?吃?|想要?|要|再来?|然后|另外|加|点|喝|配|整个?|来|给我|帮我)+/g, '')
+    .replace(/^(只要|恰好|正好|就点|一定要|必须要|务必)+/, '')
     .replace(/^饮料(选|要|来|点)?/, '') // 「饮料选雪碧」「饮料中杯可乐」→ 品名主体
     .replace(/^甜品(要)?/, '') // 「甜品要草莓麦旋风」→ 品名主体
     .replace(/^中薯$/, '薯条').replace(/^大薯$/, '薯条') // 中薯/大薯 → 薯条（当前门店单一薯条 SKU）
@@ -233,9 +234,22 @@ function extractWishes(line: string, m: GroupMember): void {
     .map((x) => x.trim())
     .filter(Boolean);
   for (const seg of segs) {
-    // 按动词与数量词切分出多个心愿片段（「A和B」「A和一份B」按「和」再切）
+    // 先按连接词切分；数量词只有在前面已有完整食品时才作为下一条需求的起点。
+    // 「只要两份五块麦乐鸡」的限定词、份数和块数必须留在同一需求里。
     const parts = seg
-      .split(/(?=想吃?|想要?|再来?|然后|另外|还要|喝|配|加|单点|点一?[个份杯瓶]|来一?[个份杯瓶]|给我|和|[一二两三四五六七八九十\d]+[份个杯瓶块盒])/g)
+      .split(/(?=想吃?|想要?|再来?|然后|另外|还要|喝|配|加|单点|点一?[个份杯瓶]|来一?[个份杯瓶]|给我|和)/g)
+      .flatMap((part) => {
+        const chunks: string[] = [];
+        let start = 0;
+        for (const q of part.matchAll(/[一二两三四五六七八九十\d]+[份个杯瓶盒]/g)) {
+          const prefix = part.slice(start, q.index);
+          if (!FOOD_RE.test(prefix)) continue;
+          chunks.push(prefix);
+          start = q.index!;
+        }
+        chunks.push(part.slice(start));
+        return chunks;
+      })
       .map((p) => p.replace(/^(然后|另外|并且|还有|和|对了)/, '').trim())
       .filter(Boolean);
     for (const p of parts) {

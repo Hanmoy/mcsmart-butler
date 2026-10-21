@@ -1365,7 +1365,7 @@ function toGroupSolution(
     return res;
   });
 
-  // 分账（原价等比；剩余成本按原价并入基数后【全体均摊】，尾差仅分级差归末位——评审二轮 #8：
+  // 分账（原价等比；剩余成本按原价并入基数后【全体均摊】，舍入按最大余数分配——评审二轮 #8：
   // 旧公式把 paid−Σ比例份额 全部甩给末位成员，等额食品会分出 10/20）
   const totalOriginal = members.reduce((s, m) => s + m.originalCents, 0);
   const leftoverCents = r.totals.leftoverCents;
@@ -1389,23 +1389,27 @@ function toGroupSolution(
   let rawShares: number[];
   if (useUnitBasis) {
     // 单位数等分摊：剩余成本一并按单位数分摊（不叠加人均项，避免总额溢出）
-    rawShares = members.map((_m, i) => Math.round((unitCounts[i] / unitTotal) * paidCents));
+    rawShares = members.map((_m, i) => (unitCounts[i] / unitTotal) * paidCents);
   } else if (base > 0) {
     const leftoverCost = (paidCents * leftoverCents) / base;
     const perMemberLeftover = members.length > 0 ? leftoverCost / members.length : 0;
-    rawShares = members.map((m) => Math.round((m.originalCents / base) * paidCents + perMemberLeftover));
+    rawShares = members.map((m) => (m.originalCents / base) * paidCents + perMemberLeftover);
   } else {
     // 无参考价且无食品单位：按人数等额分摊（仍有明确依据，不甩给末位）
-    rawShares = members.map(() => (members.length > 0 ? Math.round(paidCents / members.length) : 0));
+    rawShares = members.map(() => (members.length > 0 ? paidCents / members.length : 0));
   }
+  const roundedShares = rawShares.map((share) => Math.floor(share));
   if (members.length > 0) {
-    rawShares[members.length - 1] += paidCents - rawShares.reduce((s, x) => s + x, 0); // 尾差（分级差）
+    const remainder = paidCents - roundedShares.reduce((s, x) => s + x, 0);
+    const order = rawShares.map((share, i) => ({ i, fraction: share - roundedShares[i] }))
+      .sort((a, b) => b.fraction - a.fraction || b.i - a.i);
+    for (let i = 0; i < remainder; i++) roundedShares[order[i % order.length].i] += 1;
   }
   if (useUnitBasis) {
     warnings.push('部分食品仅在套餐内提供、无独立参考价，本次分账改按「各自所得食品份数」等分摊（非原价等比）；如需按原价分摊请单点对应食品后重算。');
   }
   members.forEach((m, idx) => {
-    m.shareCents = Math.max(0, rawShares[idx]);
+    m.shareCents = roundedShares[idx];
     m.payableCents = Math.max(0, m.shareCents - (m.personalCouponCents ?? 0));
     m.savedCents = Math.max(0, m.originalCents - m.shareCents);
     if ((m.personalCouponCents ?? 0) > 0) {

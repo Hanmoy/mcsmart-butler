@@ -1887,11 +1887,10 @@ $('#go').addEventListener('click', async ()=>{
       return;
     }
     const sfNote = d.solutions.some(x=>x.singleFallback) ? '<div class="warn" style="margin-bottom:10px">⚠️ 当前时段套餐组合无法满足约束，已按你的设置放宽加入单点补齐（已标注），可关闭该项查看纯套餐方案。</div>' : '';
-    // v1.2：同一套餐的选配变体（如果汁/牛奶）合并为一张卡，按「购买组合」去重展示
-    // v1.4.6 R02：分组键改为食品内容——不同渠道的同内容方案合并为一张卡，渠道作为购买途径列出
+    // 同食品跨渠道、同套餐不同选配分组展示；每个原始方案的配置与营养独立保留。
     const groups = groupByBasket(d.solutions);
     const shown = groups.slice(0, 5);
-    const countNote = `<div class="note" style="margin:0 0 8px">购买组合共 ${groups.length} 组${groups.length>5?'，按推荐顺序展示前 5 组':''}；同一食品组合的不同渠道/选配已收进同组卡片。</div>`;
+    const countNote = `<div class="note" style="margin:0 0 8px">推荐共 ${groups.length} 组${groups.length>5?'，按推荐顺序展示前 5 组':''}；同套餐的不同选配、同食品的不同购买途径收进同一张卡。卡片价格与营养对应当前展示配置，其他配置单独列出。</div>`;
     $('#results').innerHTML = sfNote + countNote + shown.map((g,i)=>renderSol(g[0], i, g)).join('');
   } catch(e){ $('#results').innerHTML = `<div class="warn">渲染失败：${esc(e.message)}</div>`; }
 });
@@ -1914,19 +1913,105 @@ const PRICE_SOURCE_LABEL = {
   'mixed': '券参考价 + 官方核价',
 };
 
-// v1.4.6 R02 / v1.4.7 R02-R03：分组键 = 「吃什么」——食品身份 + 规格 + 数量。
-//   旧键用显示名（券方案即券 planId）→ 同一份「麦香鸡＋香芋派」从实时券/知识库券各占一张卡；
-//   而同名不同规格（中/大可樂）又会被名称合并。现在与内核共用同一身份口径：
-//     有 option code 以 code 为准（同 code 别名归同一身份，不同 code 的同名规格保持不同）；
-//     没有 code 时用「归一化名称 + 规格」，绝不用热量近似规格。
-// v1.4.10 W10/W11：身份键必须带规格——同一父 SKU（如 9900008751）下小/中/大杯是同 code 不同规格，
-//   旧实现「有 code 就 return」把大杯与中杯合并成同一身份，分组与数量都会串。
+// 展示层保留食品名中的糖型/规格；履约 code 不足以区分同父 SKU 的不同选项。
+// 缺名称时才用 code 兜底。此处只分组展示，不重算价格/营养/排序。
+// BEGIN SHARED_FOOD_IDENTITY
+// Generated from src/foodIdentity.ts; sha256=d5ff9657cc545650acfed6fdd6f3c7370e53f68a8f1a209476ceb9c00aaf1618
+const sharedFoodKeyOf = (()=>{
+function normFoodName(s) {
+    return String(s ?? '').replace(/\s+/g, '').toLowerCase();
+}
+function normSpecKey(spec) {
+    const t = normFoodName(spec);
+    if (!t)
+        return '';
+    const out = [];
+    const re = /(超大|大|中|小|迷你)|(\d+)(块|个|件|片|只|根|份|杯)/g;
+    let m;
+    while ((m = re.exec(t)) !== null)
+        out.push(m[1] ?? `${m[2]}${m[3]}`);
+    return out.join('+');
+}
+const RE_NAME_SPEC = /(超大|大|中|小|迷你)(?=杯|份|薯|可乐|雪碧|薯条|咖啡|奶铁|豆浆|美式|红茶|果汁|牛奶|冰茶)/;
+const RE_NAME_PIECE = /([一二两三四五六七八九十\d]+)\s*块/;
+const RE_PURE_SPEC = /^(?:(?:超大|大|中|小|迷你)(?:杯|份)?|[一二两三四五六七八九十\d]+(?:块|个|件|片|只|根|份|杯))$/;
+function specOfName(name) {
+    const s = String(name ?? '').replace(/\s+/g, '');
+    const m = s.match(RE_NAME_SPEC);
+    if (m)
+        return m[1];
+    const tail = s.match(/^(..+?)(超大|大|中|小|迷你)(?:杯|份)?$/);
+    if (tail)
+        return tail[2];
+    for (const bracket of s.matchAll(/[（(【\[]([^）)】\]]*)[）)】\]]/g)) {
+        if (!RE_PURE_SPEC.test(bracket[1]))
+            continue;
+        const spec = normSpecKey(bracket[1]);
+        if (spec)
+            return spec;
+    }
+    const p = s.match(RE_NAME_PIECE);
+    if (p) {
+        const n = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 }[p[1]] ?? parseInt(p[1], 10);
+        if (Number.isFinite(n))
+            return `${n}块`;
+    }
+    return '';
+}
+function canonicalFoodName(name) {
+    let s = normFoodName(name).replace(/[（(【\[]([^）)】\]]*)[）)】\]]/g, (_all, inner) => inner.split(/[·、，,/]/).filter((part) => part && !RE_PURE_SPEC.test(part) && !/^(?:汉堡|汉堡包|堡)$/.test(part)).join(''));
+    s = s.replace(/(超大|大|中|小|迷你)(?:杯|份)/g, '').replace(RE_NAME_SPEC, '');
+    s = s.replace(/^[一二两三四五六七八九十\d]+块/, '');
+    s = s.replace(/[一二两三四五六七八九十\d]+块$/, '');
+    if (s.length > 2)
+        s = s.replace(/(超大|大|中|小|迷你)$/, '');
+    s = s.replace(/汉堡包/g, '堡').replace(/汉堡/g, '堡');
+    if (s.length > 2)
+        s = s.replace(/堡$/, '');
+    return s;
+}
+function foodKeyOf(u) {
+    const spec = normSpecKey(u.spec) || specOfName(u.name);
+    const base = canonicalFoodName(u.name) || normFoodName(u.name);
+    return `n:${base}${spec ? `@${spec}` : ''}`;
+}
+function foodMultisetSignature(units) {
+    const agg = new Map();
+    for (const u of units) {
+        if (u.nonFood)
+            continue;
+        const qty = Math.max(0, Math.round(Number(u.qty) || 0));
+        if (qty <= 0)
+            continue;
+        const key = foodKeyOf(u);
+        agg.set(key, (agg.get(key) ?? 0) + qty);
+    }
+    if (agg.size === 0)
+        return 'empty';
+    return [...agg.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+        .map(([k, n]) => `${k}×${n}`)
+        .join('|');
+}
+function foodUnitsSummary(units) {
+    return units.filter((u) => !u.nonFood)
+        .map((u) => `${u.name}${u.spec ? `(${u.spec})` : ''}${u.qty > 1 ? `×${u.qty}` : ''}`)
+        .join('＋') || '（无食品）';
+}
+return foodKeyOf;
+})();
+// END SHARED_FOOD_IDENTITY
 function foodIdentityKey(c){
-  const code=String(c&&(c.chosenCode||c.optionCode||c.code)||'').trim();
-  const name=String(c&&(c.chosenName||c.defaultName||c.name)||'').replace(/\s+/g,'').toLowerCase();
-  const spec=String(c&&(c.specLabel||c.spec)||'').replace(/\s+/g,'').toLowerCase();
-  if(code) return 'c:'+code+(spec?'@'+spec:'');
-  return 'n:'+name+(spec?'@'+spec:'');
+  return sharedFoodKeyOf({
+    code:c&&(c.chosenCode||c.optionCode||c.code),
+    name:String(c&&(c.chosenName||c.defaultName||c.name)||''),
+    spec:c&&(c.specLabel||c.spec),
+  });
+}
+function configChoiceText(c){
+  const name=c.chosenName||c.defaultName||c.name||'';
+  const spec=c.specLabel||c.spec||'';
+  const inName=foodIdentityKey({...c,specLabel:undefined,spec:undefined})===foodIdentityKey(c);
+  return name+(spec&&!inName?`（${spec}）`:'');
 }
 // v1.4.10 W10：按**逐食品**多重集展开（旧实现把一份餐的所有组件 join('+') 当成一个身份，
 //   于是「A＋B＋C」与「A＋B」不共享组件、同一份食品在套餐/散点里各算一份，分组与份数都会偏）。
@@ -1935,12 +2020,15 @@ function foodUnitsOf(it){
     const out=[];
     for (const u of it.units){
       const keys=(u.config||[]).filter(c=>!c.nonFood).map(foodIdentityKey).filter(k=>k!=='n:'&&k!=='c:');
-      if(keys.length) out.push(...keys);
-      else out.push('n:'+String(it.name||'').toLowerCase());
+      for(let n=0;n<(u.qty??1);n++){
+        if(keys.length) out.push(...keys);
+        else out.push('n:'+String(it.name||'').toLowerCase());
+      }
     }
     return out;
   }
-  const keys=(it.foods||it.deconstruction||[]).filter(r=>!r.nonFood).map(foodIdentityKey).filter(k=>k!=='n:'&&k!=='c:');
+  const refs=it.foods||it.deconstruction||[];
+  const keys=refs.filter(r=>!r.nonFood).flatMap(r=>Array.from({length:r.qty??(it.foods?1:(it.qty??1))},()=>foodIdentityKey(r))).filter(k=>k!=='n:'&&k!=='c:');
   if(keys.length) return keys;
   return Array.from({length:Math.max(1,it.qty||1)},()=>'n:'+String(it.name||'').toLowerCase());
 }
@@ -1959,22 +2047,50 @@ function basketKeyOf(s){  // 数量聚合：同身份累加份数（同一食品
   return [...counts.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(([k,n])=>k+'×'+n).join('|');
 }
 function groupByBasket(solutions){
-  const map = new Map();
+  // 精确食品签名仍用于跨渠道分组；另用同一套餐购买单元识别合法换选。
+  // 不按套餐名去重，不合并购买数量；原始配置各自留在组内，首条顺序不变。
+  const packageKey = s => {
+    if(!(s.items||[]).some(it=>it.isCombo)) return null;
+    if((s.items||[]).some(it=>it.isCombo&&!it.code)) return null;
+    return JSON.stringify((s.items||[]).map(it=>it.isCombo
+      ? ['combo',it.channel||'',it.code,it.qty??1]
+      : ['food',basketKeyOf({items:[it]})]).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  };
+  const groups = [];
   for (const s of solutions){
-    const k = basketKeyOf(s);
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(s);
+    const foodKey=basketKeyOf(s), packKey=packageKey(s);
+    const matches=groups.filter(g=>g.some(v=>basketKeyOf(v)===foodKey || (packKey!==null&&packageKey(v)===packKey)));
+    if(!matches.length){groups.push([s]);continue;}
+    const first=matches[0];
+    for(const other of matches.slice(1)){ first.push(...other); groups.splice(groups.indexOf(other),1); }
+    first.push(s);
   }
-  return [...map.values()];
+  // 桥接的跨渠道方案可能合并两个已有组，组内仍以服务端推荐顺序为准。
+  const order=new Map(solutions.map((s,i)=>[s,i]));
+  groups.forEach(g=>g.sort((a,b)=>order.get(a)-order.get(b)));
+  return groups;
 }
 function variantDesc(v){
   const items = v.items.map(it=>{
+    if(Array.isArray(it.units)&&it.units.length){
+      const configs=it.units.map(u=>`${(u.config||[]).filter(c=>!c.nonFood).map(configChoiceText).filter(Boolean).join('＋')||'默认配置'} ×${u.qty??1}`).join('；');
+      return `${it.name}（${configs}）`;
+    }
     const cfg = (it.deconstruction||[]).map(r=>r.defaultName).filter(Boolean).join('＋');
     return `${it.name}${it.qty>1?'×'+it.qty:''}${cfg?`（${cfg}）`:''}`;
   }).join(' + ');
   const cat = [...new Set(v.items.map(i=>i.category).filter(Boolean))].join(' / ');
   const src = PRICE_SOURCE_LABEL[v.priceSource] || v.priceNote || '';
   return `${items}${cat?` · ${cat}`:''}${src?` · ${src}`:''}`;
+}
+function variantNutritionText(v){
+  const m=v.metrics||{}, unknown=new Set(m.nutritionUnknownFields||[]);
+  const fields=[['蛋白质','protein','g'],['脂肪','fat','g'],['碳水','carbohydrate','g'],['钠','sodium','mg']];
+  const text=fields.map(([label,key,unit])=>{
+    const value=key==='carbohydrate'?(m.carbohydrate??m.carb):m[key];
+    return `${label} ${value==null?'暂缺':(unknown.has(key)?'≥ ':'')+value+unit}`;
+  }).join(' · ');
+  return text+(m.nutritionPartial?' · 营养部分已知':'')+(m.nutritionEstimated?' · 含估算值':'');
 }
 
 // 美团团单独立列表（单人页）：查询数量 / 入池数量 / 未核验原因细分（早期版本），技术口径折叠
@@ -2194,7 +2310,7 @@ function renderSol(s,i,variants){
     const fields=(it.nutritionUnknownFields||[]).map(k=>nutritionFieldNames[k]||k);
     return fields.length?`（缺：${esc(fields.join('、'))}）`:'';
   };
-  const kcalLabel = s.intake && s.intake.leftoverKcal > 0 ? '整篮热量占目标' : '热量占目标';
+  const kcalLabel = s.intake && !s.intake.complete ? '整篮热量占目标' : '热量占目标';
   const kcalBarHtml = kcalPartial
     ? `<div class="kcalbar"><div class="bar"><div class="fill" style="width:${pct}%"></div></div>
       <div class="lbl"><span>已知热量部分合计（非完整热量进度）</span><span>≥ ${m.kcal} / ${kcalBudget} kcal</span></div></div><div class="macros">${chips}</div>`
@@ -2204,7 +2320,7 @@ function renderSol(s,i,variants){
   const nutritionNotes = `${partial?`<div class="note" style="margin-top:4px">⁺ 营养资料不完整：标记「≥」的字段仅为已知部分合计，不用于证明硬约束达标${missingFieldLabels.length?`；缺失字段：${esc(missingFieldLabels.join('、'))}`:''}${unknownList.length?`；涉及品项：${esc(unknownList.join('、'))}`:''}。该组合仅作价格参考。</div>`:''}${m.nutritionEstimated?'<div class="note" style="margin-top:4px">† 含估算营养值，仅供参考；估算值不作为严格营养约束达标证据。来源见对应品项说明。</div>':''}`;
   // v1.4.11 W01：整篮购买 ≠ 本人摄入。有剩余时必须分别展示，硬上限只对本人摄入成立。
   const intake = s.intake;
-  const intakeHtml = intake && intake.leftoverKcal > 0
+  const intakeHtml = intake && (!intake.complete || (intake.leftovers||[]).length>0 || intake.leftoverKcal>0)
     ? `<div class="note" style="margin-top:4px">本人摄入口径：整篮 ${intake.purchasedKcal} kcal，按硬约束实际分配 ${intake.memberKcal} kcal（蛋白质 ${intake.macros?.protein ?? '—'}g · 脂肪 ${intake.macros?.fat ?? '—'}g · 碳水 ${intake.macros?.carbohydrate ?? '—'}g · 钠 ${intake.macros?.sodium ?? '—'}mg）；剩余 ${intake.leftoverKcal} kcal 未计入本人摄入（${(intake.leftovers||[]).map(l=>`${esc(l.itemName)}×${l.qty} · ${l.kcal} kcal`).join('、')}）。费用仍按整篮支付。</div>`
     : '';
   const nutritionDisplayHtml = kcalBarHtml+nutritionNotes+intakeHtml;
@@ -2215,8 +2331,8 @@ function renderSol(s,i,variants){
     ? `<div class="statusline" style="margin:0 0 8px">${channelLabels.map(c=>`<span class="chip">渠道 <b>${esc(c)}</b></span>`).join('')}${channelLabels.length>1?'<span class="chip"><b>混合购买</b></span>':''}</div>`
     : '';
   const variantHtml = variants && variants.length>1
-    ? `<details style="margin-top:8px"><summary style="font-size:11.5px; color:var(--muted); cursor:pointer">同一食品组合的 ${variants.length} 个购买途径（渠道/选配不同，价格与热量略有差异）</summary>
-        <ul class="items" style="margin-top:4px">${variants.map((v)=>`<li style="white-space:normal; display:block"><span>${esc(variantDesc(v))}</span><span>${fmtYuan(v.finalPriceCents)} · ${v.metrics.kcal} kcal</span></li>`).join('')}</ul></details>`
+    ? `<details class="configuration-variants" style="margin-top:8px"><summary style="font-size:11.5px; color:var(--muted); cursor:pointer">${variants.length} 种选配 / 购买途径（分别列价，不叠加购买）</summary>
+        <ul class="items" style="margin-top:4px">${variants.map((v,vi)=>`<li style="white-space:normal; display:block"><b>配置 ${vi+1}${vi===0?'（本卡展示）':''}</b><div>${esc(variantDesc(v))}</div><div>${fmtYuan(v.finalPriceCents)} · ${v.metrics.kcal} kcal${v.metrics.nutritionKcalPartial?'（仅已知部分）':''}</div><div>${esc(variantNutritionText(v))}</div></li>`).join('')}</ul></details>`
     : '';
   const reasonHtml = (s.reasonNotes && s.reasonNotes.length)
     ? `<details style="margin-top:6px"><summary style="font-size:11px; color:var(--faint); cursor:pointer">为什么推荐它</summary><div style="font-size:11px; color:var(--muted); line-height:1.7; margin-top:2px">${s.reasonNotes.map(n=>'· '+esc(n)).join('<br>')}</div></details>`
@@ -2240,7 +2356,7 @@ function renderSol(s,i,variants){
       if (Array.isArray(it.units) && it.units.length > 0) {
         const rows = it.units.map((u, ui)=>{
           const qty = u.qty != null ? u.qty : 1;
-          const cfgText = (u.config||[]).map(c=>`${c.roundName}：${c.chosenName}`).join('＋') || '默认配置';
+          const cfgText = (u.config||[]).map(c=>`${c.roundName}：${configChoiceText(c)}`).join('＋') || '默认配置';
           const sourceText = [...new Set((u.config||[]).map(c=>c.nutritionSource).filter(Boolean))].join('；');
           const unitPrice = u.priceCents != null ? fmtYuan(u.priceCents)+'/份' : '—';
           const unitKcal = u.kcal != null ? u.kcal+' kcal/份' : '—';

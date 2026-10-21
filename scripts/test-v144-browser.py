@@ -568,7 +568,8 @@ def main():
         }""")
         check(r["groupsSameFood"] == 1, f"同食品不同购买路径合成 1 张卡（实际 {r['groupsSameFood']}）")
         check(r["groupsDiffSpec"] == 2, f"同 code 不同规格不合并（实际 {r['groupsDiffSpec']}）")
-        check(r["specKeys"][0] != r["specKeys"][1] and "@大杯" in r["specKeys"][0],
+        # 规格归一后「大杯 / 大」使用同一尺寸键；核对两种尺寸仍各自保留。
+        check(r["specKeys"][0] != r["specKeys"][1] and "@大" in r["specKeys"][0] and "@中" in r["specKeys"][1],
               f"身份键带规格（{r['specKeys']}）")
         check("可乐（大杯）" in r["specText"], f"购买行补出规格（实际 {r['specText']}）")
         check(r["specNoDup"] == "", f"品名已含规格时不重复（实际 {r['specNoDup']}）")
