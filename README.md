@@ -1,4 +1,4 @@
-# 麦麦智能管家 · McSmart Butler <a href="#top" title="回到顶部，在右上角给项目点个 Star"><img align="right" src="https://img.shields.io/badge/⭐%20Star-去右上角点个Star-FFC72C?style=for-the-badge" alt="去右上角点 Star"></a>
+# 麦麦智能管家 · McSmart Butler
 
 **「今天吃什么？」把预算、热量和每个人的心愿，一起算进去。**
 
